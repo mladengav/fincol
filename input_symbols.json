@@ -1,4 +1,4 @@
 [
-    { "symbol": "TD.TO", "shares": 1 },
-    { "symbol": "BNS.TO", "shares": 1 }
+    { "symbol": "TD.TO", "quantity": 1 },
+    { "symbol": "BNS.TO", "quantity": 1 }
 ]
