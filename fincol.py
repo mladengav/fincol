@@ -5,7 +5,6 @@ Internal layout: :mod:`yfinance_client` snapshot → :mod:`domain` math → serv
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 import pandas as pd
@@ -90,15 +89,6 @@ def run_update_ttm_dividend(fincol_io: IFincolIo) -> None:
 # ---------------------------------------------------------------------------
 
 
-def load_symbols(loader_io: ISymbolLoader) -> list[str]:
-    """Delegate to ``loader_io.load_symbols`` and warn (returning ``[]``) on a None/empty result."""
-    result = loader_io.load_symbols()
-    if not result:
-        print(f"Warning: no symbols returned from {loader_io!r}", file=sys.stderr)
-        return []
-    return list(result)
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Yahoo Finance: raw dividend series or return breakdown for a symbol."
@@ -166,9 +156,9 @@ def main() -> int:
             CsvSymbolLoader(path) if args.csv_file is not None
             else JsonSymbolLoader(path)
         )
-        symbols = load_symbols(loader_io)
+        symbols = loader_io.load_symbols()
         if not symbols:
-            raise SystemExit(f"No symbols found in {path}")
+            raise SystemExit(f"No symbols found in {loader_io!r}")
         if args.command == "raw_div":
             for sym in symbols:
                 run_raw_div(sym, verbose=args.verbose)
