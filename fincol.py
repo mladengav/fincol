@@ -9,60 +9,62 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from yfinance import Ticker
 
 import domain as dom
 from debug_utils import debug_print_divs_structure
 from fincol_io import ISymbolLoader, IFincolIo
 from csv_io import CsvSymbolLoader, CsvFincolIo
 from json_io import JsonSymbolLoader
-from yfinance_client import load_ticker, load_ticker_dividends, load_ticker_history
+
+import yfinance_client as yf_client
+from yfinance_client import TickerSnapshot
 
 # ---------------------------------------------------------------------------
 # Services: orchestration (each mode uses its own progressive load sequence)
 # ---------------------------------------------------------------------------
 
 
-def run_raw_div(symbol: str, *, verbose: bool = False) -> None:
+def run_raw_div(symbol: str, *, verbose: bool = False) -> TickerSnapshot:
     """``load_ticker`` + ``load_ticker_dividends``; print raw ex-dividend series (no price history)."""
-    snapshot = load_ticker(symbol)
-    load_ticker_dividends(snapshot)
+    snapshot = yf_client.load_ticker(symbol)
+    yf_client.load_ticker_dividends(snapshot)
     print(f"Dividends (ex-dates) for {snapshot.symbol}")
     if verbose:
         debug_print_divs_structure(snapshot.divs)
     print(snapshot.divs.to_string() if not snapshot.divs.empty else "(no dividends in series)")
+    
+    return snapshot
 
 
 _TOTAL_INCOME_LABEL = "total_income"
 
 
-def run_load_dividend_history(symbol: str, fincol_io: IFincolIo) -> None:
-    """Like :func:`run_raw_div`, plus append deduplicated rows to ``cache/dividend_history.csv``."""
-    snapshot = load_ticker(symbol)
-    load_ticker_dividends(snapshot)
-    print(f"Dividends (ex-dates) for {snapshot.symbol}")
-    print(snapshot.divs.to_string() if not snapshot.divs.empty else "(no dividends in series)")
+def run_load_dividend_history(symbols: list[str], fincol_io: IFincolIo) -> None:
+    """Like :func:`run_raw_div`, plus append deduplicated rows to ``cache/dividend_history.csv``.
 
-    new_df = dom.dividends_to_history_frame(snapshot.symbol, snapshot.divs)
+    Loads data per ticker, concatenates new rows, then reads/writes cache once.
+    Input symbols are deduplicated (first occurrence wins) before fetch.
+    """
+    unique = list[str](dict.fromkeys(symbols))
+    if not unique:
+        return
+
+    frames: list[pd.DataFrame] = []
+    for symbol in unique:
+        snapshot = run_raw_div(symbol)
+        frames.append(yf_client.dividends_to_history_frame(snapshot.symbol, snapshot.divs))
+
+    new_df = pd.concat(frames, ignore_index=True)
     x_retrieved = len(new_df)
 
-    existing = fincol_io.read_dividend_history()
-
-    if existing.empty:
-        existing_clean = existing
-    else:
-        existing_clean = existing.drop_duplicates(subset=["ticker", "date", "amount"], keep="first")
-
-    combined = pd.concat([existing_clean, new_df], ignore_index=True)
-    combined = combined.drop_duplicates(subset=["ticker", "date", "amount"], keep="first")
-    combined = combined.sort_values(["ticker", "date"], kind="mergesort").reset_index(drop=True)
-
-    rows_added = len(combined) - len(existing_clean)
+    rows_added = fincol_io.update_dividend_history(new_df)
+    
     z_filtered = x_retrieved - rows_added
 
-    fincol_io.write_dividend_history(combined)
-
+    ticker_note = unique[0] if len(unique) == 1 else f"{len(unique)} ticker(s)"
     print(
-        f"{x_retrieved} rows retrieved ticker {snapshot.symbol}, "
+        f"{x_retrieved} rows retrieved ({ticker_note}), "
         f"{rows_added} rows added, {z_filtered} duplicate rows filtered out"
     )
 
@@ -71,7 +73,7 @@ def _merge_and_write_ttm_income(
     ttm_by_ticker: dict[str, float],
     fincol_io: IFincolIo,
 ) -> float:
-    """Update ``_TTM_INCOME_CSV``; rows for this run replace any prior rows for the same tickers; append ``total_income`` last.
+    """Calculate TTM income for each ticker and write to the cache. Rows for this run replace any prior rows for the same tickers; append ``total_income`` last.
 
     Returns the portfolio total (same value as the ``total_income`` row).
     """
@@ -179,9 +181,9 @@ def run_ttm_dividend(loader_io: ISymbolLoader, fincol_io: IFincolIo) -> None:
 
 def run_fetch_and_compute(symbol: str) -> dict[str, dict[str, object]]:
     """``load_ticker`` + ``load_ticker_dividends`` + ``load_ticker_history``; same ``divs`` path as :func:`run_raw_div`."""
-    snapshot = load_ticker(symbol)
-    load_ticker_dividends(snapshot)
-    load_ticker_history(snapshot)
+    snapshot = yf_client.load_ticker(symbol)
+    yf_client.load_ticker_dividends(snapshot)
+    yf_client.load_ticker_history(snapshot)
     if snapshot.hist.empty:
         raise RuntimeError("No price data returned for " + snapshot.symbol)
     return dom.compute_return_periods(snapshot)
@@ -304,14 +306,13 @@ def main() -> int:
             for sym in symbols:
                 run_raw_div(sym, verbose=args.verbose)
             return 0
-        for sym in symbols:
-            run_load_dividend_history(sym, fincol_io)
+        run_load_dividend_history(symbols, fincol_io)
         return 0
     if args.command == "raw_div":
         run_raw_div(args.symbol, verbose=args.verbose)
         return 0
     if args.command == "load_dividend_history":
-        run_load_dividend_history(args.symbol, fincol_io)
+        run_load_dividend_history([args.symbol], fincol_io)
         return 0
     results = run_fetch_and_compute(args.symbol)
     print_return_report(results)

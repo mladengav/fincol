@@ -36,6 +36,20 @@ def load_ticker_dividends(snapshot: TickerSnapshot) -> None:
     """Populate ``snapshot.divs`` from the bound ticker (ex-dividend series)."""
     snapshot.divs = snapshot.ticker.dividends
 
+def dividends_to_history_frame(symbol: str, divs: pd.Series) -> pd.DataFrame:
+    """One row per dividend: ticker, calendar date (YYYY-MM-DD), amount (from ``Date`` / ``Dividends`` columns)."""
+    if divs.empty:
+        return pd.DataFrame(columns=["ticker", "date", "amount"])
+    tab = divs.reset_index()
+    date_col, amt_col = tab.columns[0], tab.columns[1]
+    return pd.DataFrame(
+        {
+            "ticker": symbol,
+            "date": pd.to_datetime(tab[date_col]).dt.strftime("%Y-%m-%d"),
+            "amount": tab[amt_col].astype(float),
+        }
+    )
+
 
 def load_ticker_history(snapshot: TickerSnapshot) -> None:
     """Populate ``snapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""

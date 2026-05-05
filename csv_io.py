@@ -125,3 +125,16 @@ class CsvFincolIo(IFincolIo):
             for _, row in body.iterrows():
                 f.write(f'"{row["ticker"]}","{row["date"]}",{row["amount"]:.4f}\n')
 
+    def update_dividend_history(self, new_dividends: pd.DataFrame) -> int:
+        existing = self.read_dividend_history()
+
+        combined = pd.concat([existing, new_dividends], ignore_index=True)
+        combined = combined.drop_duplicates(subset=["ticker", "date", "amount"], keep="first")
+        combined = combined.sort_values(["ticker", "date"], kind="mergesort").reset_index(drop=True)
+
+        rows_added = len(combined) - len(existing)
+
+        self.write_dividend_history(combined)
+
+        return rows_added
+

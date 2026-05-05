@@ -56,21 +56,6 @@ def compute_return_periods(snapshot: TickerSnapshot) -> dict[str, dict[str, obje
     return results
 
 
-def dividends_to_history_frame(symbol: str, divs: pd.Series) -> pd.DataFrame:
-    """One row per dividend: ticker, calendar date (YYYY-MM-DD), amount (from ``Date`` / ``Dividends`` columns)."""
-    if divs.empty:
-        return pd.DataFrame(columns=["ticker", "date", "amount"])
-    tab = divs.reset_index()
-    date_col, amt_col = tab.columns[0], tab.columns[1]
-    return pd.DataFrame(
-        {
-            "ticker": symbol,
-            "date": pd.to_datetime(tab[date_col]).dt.strftime("%Y-%m-%d"),
-            "amount": tab[amt_col].astype(float),
-        }
-    )
-
-
 def ttm_per_share_for_ticker(ticker: str, div_hist: pd.DataFrame) -> float:
     """Sum per-share amounts for the most recent ``TTM_NUM_PAYMENTS`` ex-dates (quarterly TTM)."""
     sub = div_hist[div_hist["ticker"] == ticker]
