@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+import pandas as pd
 
-from json_io import ISymbolLoader
+from fincol_io import ISymbolLoader, IFincolIo
 
 
 class CsvSymbolLoader(ISymbolLoader):
@@ -60,3 +61,68 @@ class CsvSymbolLoader(ISymbolLoader):
                     )
                 rows.append((str(sym), float(q)))
         return rows
+
+
+class CsvFincolIo(IFincolIo):
+    """IFincolIo backed by CSV files inside a cache folder."""
+    
+    _DEFAULT_FOLDER = Path(__file__).resolve().parent / "cache"
+    _TTM_INCOME_CSV = "ttm_income.csv"
+    _DIVIDEND_HISTORY_CSV = "dividend_history.csv"
+
+
+    def __init__(self, folder: Path | None = None) -> None:
+        self._folder = folder if folder is not None else self._DEFAULT_FOLDER
+    
+
+    def __repr__(self) -> str:
+        return f"CsvFincolIo({self._folder!s})"
+
+    
+    def read_ttm_income(self) -> pd.DataFrame:
+        path = self._folder / self._TTM_INCOME_CSV
+        
+        if path.exists() and path.stat().st_size > 0:
+            try:
+                ttm_income = pd.read_csv(path)
+            except (pd.errors.EmptyDataError, pd.errors.ParserError):
+                ttm_income = pd.DataFrame(columns=["ticker", "ttm_dividend"])
+        else:
+            ttm_income = pd.DataFrame(columns=["ticker", "ttm_dividend"])
+
+        return ttm_income
+
+
+    def write_ttm_income(self, body: pd.DataFrame) -> None:
+        path = self._folder / self._TTM_INCOME_CSV
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as f:
+            f.write('"ticker","ttm_dividend"\n')
+            for _, row in body.iterrows():
+                f.write(f'"{row["ticker"]}",{row["ttm_dividend"]:.4f}\n')
+
+
+    def read_dividend_history(self) -> pd.DataFrame:
+        path = self._folder / self._DIVIDEND_HISTORY_CSV
+
+        if path.exists() and path.stat().st_size > 0:
+            try:
+                dividend_history = pd.read_csv(path)
+            except (pd.errors.EmptyDataError, pd.errors.ParserError):
+                dividend_history = pd.DataFrame(columns=["ticker", "date", "amount"])
+        else:
+            dividend_history = pd.DataFrame(columns=["ticker", "date", "amount"])
+
+        return dividend_history
+
+
+    def write_dividend_history(self, body: pd.DataFrame) -> None:
+        path = self._folder / self._DIVIDEND_HISTORY_CSV
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as f:
+            f.write('"ticker","date","amount"\n')
+            for _, row in body.iterrows():
+                f.write(f'"{row["ticker"]}","{row["date"]}",{row["amount"]:.4f}\n')
+

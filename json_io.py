@@ -8,19 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Protocol, runtime_checkable
-
-
-@runtime_checkable
-class ISymbolLoader(Protocol):
-    """Source of symbol / position records consumed by :mod:`fincol`."""
-
-    def load_symbols(self) -> list[str]:
-        ...
-
-    def load_symbols_with_quantities(self) -> list[tuple[str, float]]:
-        ...
-
+from fincol_io import ISymbolLoader
 
 class JsonSymbolLoader(ISymbolLoader):
     """:class:`ISymbolLoader` backed by a JSON array of ``{"symbol", "quantity"}`` objects at a fixed path."""
