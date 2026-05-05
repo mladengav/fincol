@@ -1,10 +1,10 @@
 """CSV IO for fincol input files.
 
-Defines :class:`CsvSymbolLoader`, a concrete :class:`~json_io.ISymbolLoader`
+Defines :class:`CsvSymbolLoader`, a concrete :class:`~fincol_io.ISymbolLoader`
 backed by a CSV file whose header includes at least ``symbol`` and
-``quantity`` columns. Mirrors :class:`json_io.JsonSymbolLoader` in shape and
-validation, using only the standard library.
+``quantity`` columns.
 """
+
 from __future__ import annotations
 
 import csv
@@ -13,9 +13,8 @@ import pandas as pd
 
 from fincol_io import ISymbolLoader, IFincolIo
 
-
 class CsvSymbolLoader(ISymbolLoader):
-    """:class:`ISymbolLoader` backed by a CSV file with ``symbol`` and ``quantity`` columns at a fixed path."""
+    """:class:`~fincol_io.ISymbolLoader` backed by a CSV file with ``symbol`` and ``quantity`` columns at a fixed path."""
 
     def __init__(self, path: Path) -> None:
         self._path = path

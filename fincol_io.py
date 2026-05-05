@@ -12,6 +12,7 @@ class ISymbolLoader(Protocol):
 
 @runtime_checkable
 class IFincolIo(Protocol):
+    """I/O for records in the schema owned by :mod:`fincol`."""
 
     def read_ttm_income(self) -> pd.DataFrame: ...
 
