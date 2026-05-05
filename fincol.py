@@ -1,64 +1,18 @@
 """
 CLI entry: raw dividend output vs. return computation for a symbol.
-Internal layout: :mod:`yfinance_client` snapshot → period math → services → argparse.
+Internal layout: :mod:`yfinance_client` snapshot → :mod:`domain` math → services → argparse.
 """
 from __future__ import annotations
 
 import argparse
 import json
-from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
 
+import domain as dom
 from debug_utils import debug_print_divs_structure
-from yfinance_client import TickerSnapshot, load_ticker, load_ticker_dividends, load_ticker_history
-
-# ---------------------------------------------------------------------------
-# Domain: return periods (pure given a snapshot, except empty hist guard in caller)
-# ---------------------------------------------------------------------------
-
-
-def _get_price_on_or_after(df: pd.DataFrame, d: date) -> pd.Series:
-    df2 = df[df.index.date >= d]
-    return df2.iloc[0] if not df2.empty else df.iloc[0]
-
-
-def _get_price_on_or_before(df: pd.DataFrame, d: date) -> pd.Series:
-    df2 = df[df.index.date <= d]
-    return df2.iloc[-1] if not df2.empty else df.iloc[-1]
-
-
-def compute_return_periods(snapshot: TickerSnapshot) -> dict[str, dict[str, object]]:
-    """1d, 1m, YTD metrics using ``snapshot.hist`` and ``snapshot.divs``."""
-    hist = snapshot.hist
-    divs = snapshot.divs
-    today = snapshot.end
-    periods: dict[str, tuple[date, date]] = {
-        "1d": (today - timedelta(days=1), today),
-        "1m": (today - timedelta(days=30), today),
-        "YTD": (date(today.year, 1, 1), today),
-    }
-    results: dict[str, dict[str, object]] = {}
-    for name, (sdate, edate) in periods.items():
-        start_row = _get_price_on_or_after(hist, sdate)
-        end_row = _get_price_on_or_before(hist, edate)
-        div_sum = divs[(divs.index.date >= sdate) & (divs.index.date <= edate)].sum()
-        price_return = (end_row["Close"] - start_row["Close"]) / start_row["Close"]
-        total_return = (end_row["Close"] - start_row["Close"] + div_sum) / start_row["Close"]
-        adj_return = (end_row["Adj Close"] - start_row["Adj Close"]) / start_row["Adj Close"]
-        results[name] = {
-            "start_date": start_row.name.date(),
-            "end_date": end_row.name.date(),
-            "start_close": float(start_row["Close"]),
-            "end_close": float(end_row["Close"]),
-            "dividends": float(div_sum),
-            "price_return": float(price_return),
-            "total_return": float(total_return),
-            "adj_return": float(adj_return),
-        }
-    return results
-
+from yfinance_client import load_ticker, load_ticker_dividends, load_ticker_history
 
 # ---------------------------------------------------------------------------
 # Services: orchestration (each mode uses its own progressive load sequence)
@@ -77,23 +31,7 @@ def run_raw_div(symbol: str, *, verbose: bool = False) -> None:
 
 _DIVIDEND_HISTORY_CSV = Path(__file__).resolve().parent / "cache" / "dividend_history.csv"
 _TTM_INCOME_CSV = Path(__file__).resolve().parent / "cache" / "ttm_income.csv"
-_TTM_NUM_PAYMENTS = 4
 _TOTAL_INCOME_LABEL = "total_income"
-
-
-def _dividends_to_history_frame(symbol: str, divs: pd.Series) -> pd.DataFrame:
-    """One row per dividend: ticker, calendar date (YYYY-MM-DD), amount (from ``Date`` / ``Dividends`` columns)."""
-    if divs.empty:
-        return pd.DataFrame(columns=["ticker", "date", "amount"])
-    tab = divs.reset_index()
-    date_col, amt_col = tab.columns[0], tab.columns[1]
-    return pd.DataFrame(
-        {
-            "ticker": symbol,
-            "date": pd.to_datetime(tab[date_col]).dt.strftime("%Y-%m-%d"),
-            "amount": tab[amt_col].astype(float),
-        }
-    )
 
 
 def run_load_dividend_history(symbol: str) -> None:
@@ -103,7 +41,7 @@ def run_load_dividend_history(symbol: str) -> None:
     print(f"Dividends (ex-dates) for {snapshot.symbol}")
     print(snapshot.divs.to_string() if not snapshot.divs.empty else "(no dividends in series)")
 
-    new_df = _dividends_to_history_frame(snapshot.symbol, snapshot.divs)
+    new_df = dom.dividends_to_history_frame(snapshot.symbol, snapshot.divs)
     x_retrieved = len(new_df)
 
     path = _DIVIDEND_HISTORY_CSV
@@ -135,22 +73,6 @@ def run_load_dividend_history(symbol: str) -> None:
         f"{x_retrieved} rows retrieved ticker {snapshot.symbol}, "
         f"{rows_added} rows added, {z_filtered} duplicate rows filtered out"
     )
-
-
-def _ttm_per_share_for_ticker(ticker: str, div_hist: pd.DataFrame) -> float:
-    """Sum per-share amounts for the most recent ``_TTM_NUM_PAYMENTS`` ex-dates (quarterly TTM)."""
-    sub = div_hist[div_hist["ticker"] == ticker]
-    if sub.empty:
-        return 0.0
-    s = sub.assign(_d=pd.to_datetime(sub["date"])).sort_values("_d", ascending=False).head(_TTM_NUM_PAYMENTS)
-    return float(s["amount"].sum())
-
-
-def _aggregate_positions_by_ticker(positions: list[tuple[str, float]]) -> list[tuple[str, float]]:
-    acc: dict[str, float] = {}
-    for sym, q in positions:
-        acc[sym] = acc.get(sym, 0.0) + q
-    return sorted(acc.items(), key=lambda x: x[0])
 
 
 def _write_ttm_income_csv(path: Path, body: pd.DataFrame) -> None:
@@ -241,21 +163,21 @@ def run_ttm_dividend(symbols_path: Path) -> None:
     positions = load_symbols_with_quantities_from_json(symbols_path)
     if not positions:
         raise SystemExit(f"No symbol/quantity entries found in {symbols_path}")
-    aggregated = _aggregate_positions_by_ticker(positions)
+    aggregated = dom.aggregate_positions_by_ticker(positions)
     if _DIVIDEND_HISTORY_CSV.is_file():
         div_hist = pd.read_csv(_DIVIDEND_HISTORY_CSV)
     else:
         div_hist = pd.DataFrame(columns=["ticker", "date", "amount"])
     ttm_by_ticker: dict[str, float] = {}
     for sym, qty in aggregated:
-        ttm_by_ticker[sym] = _ttm_per_share_for_ticker(sym, div_hist) * qty
+        ttm_by_ticker[sym] = dom.ttm_per_share_for_ticker(sym, div_hist) * qty
     total_income = _merge_and_write_ttm_income(aggregated, ttm_by_ticker)
 
     print(f"Loaded {len(positions)} line(s) from {symbols_path} ({len(aggregated)} ticker(s) after aggregating quantities)")
     for sym, qty in positions:
         print(f"  {sym}: {qty} shares")
     for sym, _ in aggregated:
-        print(f"  TTM dividend income (last {_TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
+        print(f"  TTM dividend income (last {dom.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
     print(f"Total TTM dividend income (all tickers in file): {total_income:.4f}")
     print(f"Wrote {_TTM_INCOME_CSV} (last row {_TOTAL_INCOME_LABEL} = {total_income:.4f})")
 
@@ -267,7 +189,7 @@ def run_fetch_and_compute(symbol: str) -> dict[str, dict[str, object]]:
     load_ticker_history(snapshot)
     if snapshot.hist.empty:
         raise RuntimeError("No price data returned for " + snapshot.symbol)
-    return compute_return_periods(snapshot)
+    return dom.compute_return_periods(snapshot)
 
 
 def print_return_report(results: dict[str, dict[str, object]]) -> None:
