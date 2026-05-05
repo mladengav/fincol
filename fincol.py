@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 import pandas as pd
-from yfinance import Ticker
 
 import domain as dom
 from debug_utils import debug_print_divs_structure
@@ -178,24 +177,6 @@ def run_ttm_dividend(loader_io: ISymbolLoader, fincol_io: IFincolIo) -> None:
     print(f"Wrote TTM income to {fincol_io!r} (last row {_TOTAL_INCOME_LABEL} = {total_income:.4f})")
 
 
-def run_fetch_and_compute(symbol: str) -> dict[str, dict[str, object]]:
-    """``load_ticker`` + ``with_dividends`` + ``with_history``; same ``divs`` path as :func:`run_raw_div`."""
-    snapshot = yf_client.load_ticker(symbol).with_dividends().with_history()
-    if snapshot.hist.empty:
-        raise RuntimeError("No price data returned for " + snapshot.symbol)
-    return dom.compute_return_periods(snapshot)
-
-
-def print_return_report(results: dict[str, dict[str, object]]) -> None:
-    for period, vals in results.items():
-        print(f"{period}: start {vals['start_date']} -> end {vals['end_date']}")
-        print(f"  Start Close: {vals['start_close']:.2f}, End Close: {vals['end_close']:.2f}")
-        print(f"  Dividends in period: {vals['dividends']:.4f}")
-        print(f"  Price return: {vals['price_return']:.2%}")
-        print(f"  Total return (price + dividends): {vals['total_return']:.2%}")
-        print(f"  Adjusted-close return: {vals['adj_return']:.2%}\n")
-
-
 # ---------------------------------------------------------------------------
 # User input: CLI
 # ---------------------------------------------------------------------------
@@ -218,9 +199,9 @@ def build_parser() -> argparse.ArgumentParser:
         "command",
         nargs="?",
         default="raw_div",
-        choices=("raw_div", "load_dividend_history", "ttm_dividend", "fetch_and_compute"),
+        choices=("raw_div", "load_dividend_history", "ttm_dividend"),
         help='Mode: print dividend series (default), save dividends to cache CSV, TTM dividend income from a '
-        "positions file, or compute period returns. "
+        "positions file. "
         'Default: "%(default)s".',
     )
     parser.add_argument(
@@ -311,9 +292,7 @@ def main() -> int:
     if args.command == "load_dividend_history":
         run_load_dividend_history([args.symbol], fincol_io)
         return 0
-    results = run_fetch_and_compute(args.symbol)
-    print_return_report(results)
-    return 0
+    raise SystemExit(f"Unsupported command: {args.command}")
 
 
 if __name__ == "__main__":
