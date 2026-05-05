@@ -12,6 +12,7 @@ import pandas as pd
 
 import domain as dom
 from debug_utils import debug_print_divs_structure
+from csv_io import CsvSymbolLoader
 from json_io import ISymbolLoader, JsonSymbolLoader
 from yfinance_client import load_ticker, load_ticker_dividends, load_ticker_history
 
@@ -263,7 +264,8 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="In raw_div mode, print snapshot.divs structure debug lines.",
     )
-    parser.add_argument(
+    input_group = parser.add_mutually_exclusive_group()
+    input_group.add_argument(
         "-j",
         "--jsonFile",
         dest="json_file",
@@ -275,27 +277,49 @@ def build_parser() -> argparse.ArgumentParser:
         "'symbol' keys (quantity ignored). For ttm_dividend: read 'symbol' and 'quantity' per object. "
         "If the flag is given without PATH, use input_symbols.json.",
     )
+    input_group.add_argument(
+        "-c",
+        "--csvFile",
+        dest="csv_file",
+        nargs="?",
+        const="input_symbols.csv",
+        default=None,
+        metavar="PATH",
+        help="For raw_div and load_dividend_history: read symbols from a CSV file with a 'symbol' "
+        "column (quantity ignored). For ttm_dividend: read 'symbol' and 'quantity' columns. "
+        "If the flag is given without PATH, use input_symbols.csv. Mutually exclusive with -j/--jsonFile.",
+    )
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
-    if args.command == "ttm_dividend" and args.json_file is None:
-        raise SystemExit("ttm_dividend requires -j / --jsonFile (omit PATH to use input_symbols.json).")
-    if args.json_file is not None and args.command not in (
+    input_arg = args.json_file if args.json_file is not None else args.csv_file
+    if args.command == "ttm_dividend" and input_arg is None:
+        raise SystemExit(
+            "ttm_dividend requires -j / --jsonFile or -c / --csvFile "
+            "(omit PATH to use input_symbols.json or input_symbols.csv)."
+        )
+    if input_arg is not None and args.command not in (
         "raw_div",
         "load_dividend_history",
         "ttm_dividend",
     ):
-        raise SystemExit("--jsonFile/-j is only supported with raw_div, load_dividend_history, and ttm_dividend.")
-    if args.json_file is not None:
-        # Path resolution: ``PATH`` / the default ``input_symbols.json`` are resolved with
-        # :class:`pathlib.Path` as usual—relative names are relative to the process current
-        # working directory, not the directory containing this script.
-        path = Path(args.json_file).expanduser()
+        raise SystemExit(
+            "--jsonFile/-j and --csvFile/-c are only supported with raw_div, "
+            "load_dividend_history, and ttm_dividend."
+        )
+    if input_arg is not None:
+        # Path resolution: ``PATH`` / the default ``input_symbols.json`` /
+        # ``input_symbols.csv`` are resolved with :class:`pathlib.Path` as usual—relative
+        # names are relative to the process current working directory, not the directory
+        # containing this script.
+        path = Path(input_arg).expanduser()
         if not path.is_file():
-            raise SystemExit(f"JSON file not found: {path}")
-        io: ISymbolLoader = JsonSymbolLoader(path)
+            raise SystemExit(f"Input file not found: {path}")
+        io: ISymbolLoader = (
+            CsvSymbolLoader(path) if args.csv_file is not None else JsonSymbolLoader(path)
+        )
         if args.command == "ttm_dividend":
             run_ttm_dividend(io)
             return 0
