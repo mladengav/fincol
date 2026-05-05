@@ -5,13 +5,14 @@ Internal layout: :mod:`yfinance_client` snapshot → :mod:`domain` math → serv
 from __future__ import annotations
 
 import argparse
-import json
+import sys
 from pathlib import Path
 
 import pandas as pd
 
 import domain as dom
 from debug_utils import debug_print_divs_structure
+from json_io import ISymbolLoader, JsonSymbolLoader
 from yfinance_client import load_ticker, load_ticker_dividends, load_ticker_history
 
 # ---------------------------------------------------------------------------
@@ -140,29 +141,50 @@ def _merge_and_write_ttm_income(
     return ticker_total
 
 
-def load_symbols_with_quantities_from_json(path: Path) -> list[tuple[str, float]]:
-    """Load ``(symbol, quantity)`` from a JSON array; each object needs ``symbol`` and ``quantity``."""
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, list):
-        raise ValueError(f"JSON root must be an array, got {type(data).__name__}")
+def load_symbols_with_quantities(io: ISymbolLoader) -> list[tuple[str, float]]:
+    """Delegate to ``io.load_symbols_with_quantities`` and tolerate None/empty/malformed entries.
+
+    Each result item must be a 2-element ``tuple``/``list`` whose first element is
+    coercible to a non-empty ``str`` and whose second is coercible to ``float``;
+    anything else is skipped with a stderr warning.
+    """
+    result = io.load_symbols_with_quantities()
+    if not result:
+        print(f"Warning: no symbol/quantity entries returned from {io!r}", file=sys.stderr)
+        return []
     rows: list[tuple[str, float]] = []
-    for item in data:
-        if not isinstance(item, dict) or "symbol" not in item or item["symbol"] is None:
-            continue
-        q = item.get("quantity")
-        if q is None:
-            raise ValueError(
-                f"Each object with 'symbol' must include 'quantity': {item!r}"
+    for i, item in enumerate(result):
+        if not isinstance(item, (tuple, list)) or len(item) != 2:
+            print(
+                f"Warning: skipping malformed entry #{i} from {io!r}: {item!r}",
+                file=sys.stderr,
             )
-        rows.append((str(item["symbol"]), float(q)))
+            continue
+        sym, qty = item
+        try:
+            sym_str = str(sym)
+            qty_val = float(qty)
+        except (TypeError, ValueError):
+            print(
+                f"Warning: skipping entry #{i} with bad types from {io!r}: {item!r}",
+                file=sys.stderr,
+            )
+            continue
+        if not sym_str:
+            print(
+                f"Warning: skipping entry #{i} with empty symbol from {io!r}: {item!r}",
+                file=sys.stderr,
+            )
+            continue
+        rows.append((sym_str, qty_val))
     return rows
 
 
-def run_ttm_dividend(symbols_path: Path) -> None:
-    """Load positions from JSON; TTM from ``cache/dividend_history.csv``; write ``cache/ttm_income.csv``."""
-    positions = load_symbols_with_quantities_from_json(symbols_path)
+def run_ttm_dividend(io: ISymbolLoader) -> None:
+    """Load positions via ``io``; TTM from ``cache/dividend_history.csv``; write ``cache/ttm_income.csv``."""
+    positions = load_symbols_with_quantities(io)
     if not positions:
-        raise SystemExit(f"No symbol/quantity entries found in {symbols_path}")
+        raise SystemExit(f"No symbol/quantity entries found in {io!r}")
     aggregated = dom.aggregate_positions_by_ticker(positions)
     if _DIVIDEND_HISTORY_CSV.is_file():
         div_hist = pd.read_csv(_DIVIDEND_HISTORY_CSV)
@@ -173,7 +195,7 @@ def run_ttm_dividend(symbols_path: Path) -> None:
         ttm_by_ticker[sym] = dom.ttm_per_share_for_ticker(sym, div_hist) * qty
     total_income = _merge_and_write_ttm_income(aggregated, ttm_by_ticker)
 
-    print(f"Loaded {len(positions)} line(s) from {symbols_path} ({len(aggregated)} ticker(s) after aggregating quantities)")
+    print(f"Loaded {len(positions)} position(s) from {io!r} ({len(aggregated)} ticker(s) after aggregating quantities)")
     for sym, qty in positions:
         print(f"  {sym}: {qty} shares")
     for sym, _ in aggregated:
@@ -207,16 +229,13 @@ def print_return_report(results: dict[str, dict[str, object]]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def load_symbols_from_json(path: Path) -> list[str]:
-    """Load ticker symbols from a JSON array of objects; each object should have a ``symbol`` key."""
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, list):
-        raise ValueError(f"JSON root must be an array, got {type(data).__name__}")
-    symbols: list[str] = []
-    for item in data:
-        if isinstance(item, dict) and "symbol" in item and item["symbol"] is not None:
-            symbols.append(str(item["symbol"]))
-    return symbols
+def load_symbols(io: ISymbolLoader) -> list[str]:
+    """Delegate to ``io.load_symbols`` and warn (returning ``[]``) on a None/empty result."""
+    result = io.load_symbols()
+    if not result:
+        print(f"Warning: no symbols returned from {io!r}", file=sys.stderr)
+        return []
+    return list(result)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -276,10 +295,11 @@ def main() -> int:
         path = Path(args.json_file).expanduser()
         if not path.is_file():
             raise SystemExit(f"JSON file not found: {path}")
+        io: ISymbolLoader = JsonSymbolLoader(path)
         if args.command == "ttm_dividend":
-            run_ttm_dividend(path)
+            run_ttm_dividend(io)
             return 0
-        symbols = load_symbols_from_json(path)
+        symbols = load_symbols(io)
         if not symbols:
             raise SystemExit(f"No symbols found in {path}")
         if args.command == "raw_div":
