@@ -19,6 +19,21 @@ class TickerSnapshot:
     hist: pd.DataFrame = field(default_factory=pd.DataFrame)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
 
+    def with_dividends(self) -> TickerSnapshot:
+        """Populate ``TickerSnapshot.divs`` from the bound ticker (ex-dividend series)."""
+        self.divs = self.ticker.dividends
+        return self
+
+    def with_history(self) -> TickerSnapshot:
+        """Populate ``TickerSnapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""
+        self.hist = self.ticker.history(
+            start=self.history_start.isoformat(),
+            end=(self.end + timedelta(days=1)).isoformat(),
+            interval="1d",
+            auto_adjust=False,
+        )
+        return self 
+
 
 def load_ticker(symbol: str) -> TickerSnapshot:
     """Create a yfinance :class:`yf.Ticker` and date window; ``hist``/``divs`` are empty until loaded."""
@@ -31,10 +46,6 @@ def load_ticker(symbol: str) -> TickerSnapshot:
         ticker=yf.Ticker(symbol),
     )
 
-
-def load_ticker_dividends(snapshot: TickerSnapshot) -> None:
-    """Populate ``snapshot.divs`` from the bound ticker (ex-dividend series)."""
-    snapshot.divs = snapshot.ticker.dividends
 
 def dividends_to_history_frame(symbol: str, divs: pd.Series) -> pd.DataFrame:
     """One row per dividend: ticker, calendar date (YYYY-MM-DD), amount (from ``Date`` / ``Dividends`` columns)."""
@@ -50,12 +61,3 @@ def dividends_to_history_frame(symbol: str, divs: pd.Series) -> pd.DataFrame:
         }
     )
 
-
-def load_ticker_history(snapshot: TickerSnapshot) -> None:
-    """Populate ``snapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""
-    snapshot.hist = snapshot.ticker.history(
-        start=snapshot.history_start.isoformat(),
-        end=(snapshot.end + timedelta(days=1)).isoformat(),
-        interval="1d",
-        auto_adjust=False,
-    )

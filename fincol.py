@@ -26,9 +26,8 @@ from yfinance_client import TickerSnapshot
 
 
 def run_raw_div(symbol: str, *, verbose: bool = False) -> TickerSnapshot:
-    """``load_ticker`` + ``load_ticker_dividends``; print raw ex-dividend series (no price history)."""
-    snapshot = yf_client.load_ticker(symbol)
-    yf_client.load_ticker_dividends(snapshot)
+    """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""
+    snapshot = yf_client.load_ticker(symbol).with_dividends()
     print(f"Dividends (ex-dates) for {snapshot.symbol}")
     if verbose:
         debug_print_divs_structure(snapshot.divs)
@@ -180,10 +179,8 @@ def run_ttm_dividend(loader_io: ISymbolLoader, fincol_io: IFincolIo) -> None:
 
 
 def run_fetch_and_compute(symbol: str) -> dict[str, dict[str, object]]:
-    """``load_ticker`` + ``load_ticker_dividends`` + ``load_ticker_history``; same ``divs`` path as :func:`run_raw_div`."""
-    snapshot = yf_client.load_ticker(symbol)
-    yf_client.load_ticker_dividends(snapshot)
-    yf_client.load_ticker_history(snapshot)
+    """``load_ticker`` + ``with_dividends`` + ``with_history``; same ``divs`` path as :func:`run_raw_div`."""
+    snapshot = yf_client.load_ticker(symbol).with_dividends().with_history()
     if snapshot.hist.empty:
         raise RuntimeError("No price data returned for " + snapshot.symbol)
     return dom.compute_return_periods(snapshot)
