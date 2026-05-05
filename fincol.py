@@ -35,9 +35,6 @@ def run_raw_div(symbol: str, *, verbose: bool = False) -> TickerSnapshot:
     return snapshot
 
 
-_TOTAL_INCOME_LABEL = "total_income"
-
-
 def run_load_dividend_history(symbols: list[str], fincol_io: IFincolIo) -> None:
     """Like :func:`run_raw_div`, plus append deduplicated rows to ``cache/dividend_history.csv``.
 
@@ -66,55 +63,7 @@ def run_load_dividend_history(symbols: list[str], fincol_io: IFincolIo) -> None:
         f"{rows_added} rows added, {z_filtered} duplicate rows filtered out"
     )
 
-def _merge_and_write_ttm_income(
-    processed: list[tuple[str, float]],
-    ttm_by_ticker: dict[str, float],
-    fincol_io: IFincolIo,
-) -> float:
-    """Calculate TTM income for each ticker and write to the cache. Rows for this run replace any prior rows for the same tickers; append ``total_income`` last.
-
-    Returns the portfolio total (same value as the ``total_income`` row).
-    """
-    processed_set = {t for t, _ in processed}
-
-    new_rows = pd.DataFrame(
-        [
-            {
-                "ticker": t,
-                "ttm_dividend": ttm_by_ticker.get(t, 0.0),
-            }
-            for t, _ in processed
-        ]
-    )
-
-    existing = fincol_io.read_ttm_income()
-
-    if not existing.empty:
-        existing = existing[existing["ticker"].astype(str) != _TOTAL_INCOME_LABEL]
-        existing = existing[~existing["ticker"].astype(str).isin(processed_set)]
-
-    combined = pd.concat([existing, new_rows], ignore_index=True)
-    if not combined.empty:
-        combined = combined.drop_duplicates(subset=["ticker"], keep="last")
-        combined = combined.sort_values("ticker", kind="mergesort").reset_index(drop=True)
-        combined["ttm_dividend"] = pd.to_numeric(combined["ttm_dividend"], errors="coerce").fillna(0.0)
-
-    ticker_total = 0.0
-    if not combined.empty:
-        ticker_total = float(
-            combined[combined["ticker"].astype(str) != _TOTAL_INCOME_LABEL]["ttm_dividend"].sum()
-        )
-    out = pd.concat(
-        [
-            combined,
-            pd.DataFrame(
-                [{"ticker": _TOTAL_INCOME_LABEL, "ttm_dividend": ticker_total}]
-            ),
-        ],
-        ignore_index=True,
-    )
-    fincol_io.write_ttm_income(out)
-    return ticker_total
+    run_update_ttm_dividend(fincol_io)
 
 
 def load_symbols_with_quantities(loader_io: ISymbolLoader) -> list[tuple[str, float]]:
@@ -155,26 +104,44 @@ def load_symbols_with_quantities(loader_io: ISymbolLoader) -> list[tuple[str, fl
         rows.append((sym_str, qty_val))
     return rows
 
+def run_update_ttm_dividend(fincol_io: IFincolIo) -> None:
+    """Write TTM income via ``fincol_io``."""
 
-def run_ttm_dividend(loader_io: ISymbolLoader, fincol_io: IFincolIo) -> None:
-    """Load positions via ``loader_io``; read dividend history and write TTM income via ``fincol_io``."""
+    div_hist = fincol_io.read_dividend_history()
+    ttm_by_ticker: dict[str, float] = {}
+
+    unique_tickers = list(dict.fromkeys(div_hist["ticker"]))
+
+    for sym in unique_tickers:
+        ttm_by_ticker[sym] = dom.ttm_per_share_for_ticker(sym, div_hist)
+    fincol_io.write_ttm_income(ttm_by_ticker)
+
+    print(f"Loaded {len(unique_tickers)} ticker(s) from {fincol_io!r}")
+    for sym in unique_tickers:
+        print(f"  TTM dividend income (last {dom.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
+
+    print(f"Wrote TTM income to {fincol_io!r}")
+
+def run_display_positions_dividend(loader_io: ISymbolLoader, fincol_io: IFincolIo) -> None:
+    """Load positions via ``loader_io``; read TTM dividends via ``fincol_io`` and display TTM income for positions"""
     positions = load_symbols_with_quantities(loader_io)
     if not positions:
         raise SystemExit(f"No symbol/quantity entries found in {loader_io!r}")
     aggregated = dom.aggregate_positions_by_ticker(positions)
-    div_hist = fincol_io.read_dividend_history()
+    per_share = fincol_io.read_ttm_income()
     ttm_by_ticker: dict[str, float] = {}
+
     for sym, qty in aggregated:
-        ttm_by_ticker[sym] = dom.ttm_per_share_for_ticker(sym, div_hist) * qty
-    total_income = _merge_and_write_ttm_income(aggregated, ttm_by_ticker, fincol_io)
+        ttm_by_ticker[sym] = per_share.get(sym, 0.0) * qty
 
     print(f"Loaded {len(positions)} position(s) from {loader_io!r} ({len(aggregated)} ticker(s) after aggregating quantities)")
     for sym, qty in positions:
         print(f"  {sym}: {qty} shares")
     for sym, _ in aggregated:
         print(f"  TTM dividend income (last {dom.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
+
+    total_income = sum(ttm_by_ticker.values())
     print(f"Total TTM dividend income (all tickers in file): {total_income:.4f}")
-    print(f"Wrote TTM income to {fincol_io!r} (last row {_TOTAL_INCOME_LABEL} = {total_income:.4f})")
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +242,7 @@ def main() -> int:
             else JsonSymbolLoader(path)
         )
         if args.command == "ttm_dividend":
-            run_ttm_dividend(loader_io, fincol_io)
+            run_display_positions_dividend(loader_io, fincol_io)
             return 0
         symbols = load_symbols(loader_io)
         if not symbols:

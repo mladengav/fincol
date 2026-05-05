@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Protocol, runtime_checkable
 import pandas as pd
 
@@ -14,9 +15,9 @@ class ISymbolLoader(Protocol):
 class IFincolIo(Protocol):
     """I/O for records in the schema owned by :mod:`fincol`."""
 
-    def read_ttm_income(self) -> pd.DataFrame: ...
+    def read_ttm_income(self) -> dict[str, float]: ...
 
-    def write_ttm_income(self, body: pd.DataFrame) -> None: ...
+    def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None: ...
 
     def read_dividend_history(self) -> pd.DataFrame: ...
 

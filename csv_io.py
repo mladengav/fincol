@@ -8,6 +8,7 @@ backed by a CSV file whose header includes at least ``symbol`` and
 from __future__ import annotations
 
 import csv
+from collections.abc import Mapping
 from pathlib import Path
 import pandas as pd
 
@@ -78,28 +79,42 @@ class CsvFincolIo(IFincolIo):
         return f"CsvFincolIo({self._folder!s})"
 
     
-    def read_ttm_income(self) -> pd.DataFrame:
+    def read_ttm_income(self) -> dict[str, float]:
         path = self._folder / self._TTM_INCOME_CSV
-        
-        if path.exists() and path.stat().st_size > 0:
-            try:
-                ttm_income = pd.read_csv(path)
-            except (pd.errors.EmptyDataError, pd.errors.ParserError):
-                ttm_income = pd.DataFrame(columns=["ticker", "ttm_dividend"])
-        else:
-            ttm_income = pd.DataFrame(columns=["ticker", "ttm_dividend"])
 
-        return ttm_income
+        if not (path.exists() and path.stat().st_size > 0):
+            return {}
+
+        with path.open("r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            missing = {"ticker", "ttm_dividend"} - set(reader.fieldnames or [])
+            if missing:
+                raise ValueError(
+                    f"{path}: missing required column(s): {sorted(missing)}"
+                )
+            result: dict[str, float] = {}
+            for i, row in enumerate(reader, start=2):
+                ticker = row.get("ticker")
+                value = row.get("ttm_dividend")
+                if not ticker:
+                    raise ValueError(f"{path}:{i}: empty ticker")
+                try:
+                    result[str(ticker)] = float(value) if value not in (None, "") else 0.0
+                except (TypeError, ValueError) as e:
+                    raise ValueError(
+                        f"{path}:{i}: bad ttm_dividend value {value!r} for {ticker!r}"
+                    ) from e
+        return result
 
 
-    def write_ttm_income(self, body: pd.DataFrame) -> None:
+    def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None:
         path = self._folder / self._TTM_INCOME_CSV
 
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8", newline="") as f:
             f.write('"ticker","ttm_dividend"\n')
-            for _, row in body.iterrows():
-                f.write(f'"{row["ticker"]}",{row["ttm_dividend"]:.4f}\n')
+            for ticker in sorted(ttm_by_ticker):
+                f.write(f'"{ticker}",{float(ttm_by_ticker[ticker]):.4f}\n')
 
 
     def read_dividend_history(self) -> pd.DataFrame:
