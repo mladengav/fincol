@@ -5,23 +5,22 @@ Internal layout: :mod:`yfinance_client` snapshot → :mod:`domain` math → serv
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-
+import domain as dom
 import pandas as pd
 
-import domain as dom
-from debug_utils import debug_print_divs_structure
-from fincol_io import ISymbolLoader, IFincolIo
-from csv_io import CsvSymbolLoader, CsvFincolIo
-from json_io import JsonSymbolLoader
+from pathlib import Path
 
 import yfinance_client as yf_client
+
+from csv_io import CsvSymbolLoader, CsvFincolIo, AzBlobCsvFincolIo
+from debug_utils import debug_print_divs_structure
+from fincol_io import ISymbolLoader, IFincolIo
+from json_io import JsonSymbolLoader
 from yfinance_client import TickerSnapshot
 
 # ---------------------------------------------------------------------------
 # Services: orchestration (each mode uses its own progressive load sequence)
 # ---------------------------------------------------------------------------
-
 
 def run_raw_div(symbol: str, *, verbose: bool = False) -> TickerSnapshot:
     """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""
@@ -113,6 +112,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="In raw_div mode, print snapshot.divs structure debug lines.",
     )
+    parser.add_argument(
+        "--azureCsvStore",
+        action="store_true",
+        dest="azure_csv_store",
+        help="Use Azure Blob Storage container 'csvcache' as the backing store for cache CSV files.",
+    )
     input_group = parser.add_mutually_exclusive_group()
     input_group.add_argument(
         "-j",
@@ -143,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     input_arg = args.json_file if args.json_file is not None else args.csv_file
-    fincol_io: IFincolIo = CsvFincolIo()
+    fincol_io: IFincolIo = AzBlobCsvFincolIo() if args.azure_csv_store else CsvFincolIo()
     if input_arg is not None:
         # Path resolution: ``PATH`` / the default ``input_symbols.json`` /
         # ``input_symbols.csv`` are resolved with :class:`pathlib.Path` as usual—relative
