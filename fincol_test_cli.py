@@ -69,7 +69,7 @@ def run_display_positions_dividend(loader_io: ISymbolLoader, fincol_io: IFincolI
         ttm_by_ticker[sym] = per_share.get(sym, 0.0) * qty
 
     print(f"Loaded {len(positions)} position(s) from {loader_io!r} ({len(aggregated)} ticker(s) after aggregating quantities)")
-    for sym, qty in positions:
+    for sym, qty in aggregated:
         print(f"  {sym}: {qty} shares")
     for sym, _ in aggregated:
         print(f"  TTM dividend income (last {dom.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
