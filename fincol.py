@@ -12,7 +12,7 @@ import pandas as pd
 import domain as dom
 from debug_utils import debug_print_divs_structure
 from fincol_io import ISymbolLoader, IFincolIo
-from csv_io import CsvSymbolLoader, CsvFincolIo
+from csv_io import CsvSymbolLoader, CsvFincolIo, AzBlobCsvFincolIo
 from json_io import JsonSymbolLoader
 
 import yfinance_client as yf_client
@@ -113,6 +113,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="In raw_div mode, print snapshot.divs structure debug lines.",
     )
+    parser.add_argument(
+        "--azureCsvStore",
+        action="store_true",
+        help="Use Azure Blob Storage container 'csvcache' as the backing store for cache CSV files.",
+    )
     input_group = parser.add_mutually_exclusive_group()
     input_group.add_argument(
         "-j",
@@ -143,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     input_arg = args.json_file if args.json_file is not None else args.csv_file
-    fincol_io: IFincolIo = CsvFincolIo()
+    fincol_io: IFincolIo = AzBlobCsvFincolIo() if args.azureCsvStore else CsvFincolIo()
     if input_arg is not None:
         # Path resolution: ``PATH`` / the default ``input_symbols.json`` /
         # ``input_symbols.csv`` are resolved with :class:`pathlib.Path` as usual—relative

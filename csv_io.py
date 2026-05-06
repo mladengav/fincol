@@ -5,16 +5,16 @@ backed by a CSV file whose header includes at least ``symbol`` and
 ``quantity`` columns.
 """
 
-from __future__ import annotations
-
 import csv
-from collections.abc import Mapping
-from pathlib import Path
 import os
 import pandas as pd
+
+from __future__ import annotations
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
+from collections.abc import Mapping
 from dotenv import load_dotenv
+from pathlib import Path
 
 from fincol_io import ISymbolLoader, IFincolIo
 
@@ -194,8 +194,7 @@ class AzBlobCsvFincolIo(CsvFincolIo):
                 self._container_client.upload_blob(
                     name=blob_name,
                     data=data,
-                    overwrite=True,
-                )
+                    overwrite=True)
 
     def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None:
         super().write_ttm_income(ttm_by_ticker)
