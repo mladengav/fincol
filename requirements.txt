@@ -1,0 +1,5 @@
+pandas
+yfinance
+azure-storage-blob
+azure-identity
+python-dotenv

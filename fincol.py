@@ -5,23 +5,22 @@ Internal layout: :mod:`yfinance_client` snapshot → :mod:`domain` math → serv
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-
+import domain as dom
 import pandas as pd
 
-import domain as dom
-from debug_utils import debug_print_divs_structure
-from fincol_io import ISymbolLoader, IFincolIo
-from csv_io import CsvSymbolLoader, CsvFincolIo, AzBlobCsvFincolIo
-from json_io import JsonSymbolLoader
+from pathlib import Path
 
 import yfinance_client as yf_client
+
+from csv_io import CsvSymbolLoader, CsvFincolIo, AzBlobCsvFincolIo
+from debug_utils import debug_print_divs_structure
+from fincol_io import ISymbolLoader, IFincolIo
+from json_io import JsonSymbolLoader
 from yfinance_client import TickerSnapshot
 
 # ---------------------------------------------------------------------------
 # Services: orchestration (each mode uses its own progressive load sequence)
 # ---------------------------------------------------------------------------
-
 
 def run_raw_div(symbol: str, *, verbose: bool = False) -> TickerSnapshot:
     """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""

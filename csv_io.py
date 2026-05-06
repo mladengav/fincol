@@ -4,12 +4,12 @@ Defines :class:`CsvSymbolLoader`, a concrete :class:`~fincol_io.ISymbolLoader`
 backed by a CSV file whose header includes at least ``symbol`` and
 ``quantity`` columns.
 """
+from __future__ import annotations
 
 import csv
 import os
 import pandas as pd
 
-from __future__ import annotations
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from collections.abc import Mapping
