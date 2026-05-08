@@ -1,6 +1,7 @@
 .git
 .gitignore
 .gitattributes
+.github/
 
 # Python artifacts
 __pycache__/

@@ -13,7 +13,7 @@ FROM ${PYTHON_IMAGE} AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 ENV UV_LINK_MODE=copy \
-    UV_COMPILE_BYTECODE=1 \
+    UV_COMPILE_BYTECODE=0 \
     UV_PYTHON_DOWNLOADS=never \
     UV_PROJECT_ENVIRONMENT=/app/.venv
 
@@ -30,6 +30,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY . ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev
+
+RUN find /app/.venv -type d -name "__pycache__" -prune -exec rm -rf {} + \
+    && find /app/.venv -type d -name "tests" -prune -exec rm -rf {} + \
+    && find /app/.venv -type d -name "test" -prune -exec rm -rf {} +
 
 # ---------------------------------------------------------------------------
 # Stage 2: runtime
