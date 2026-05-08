@@ -4,84 +4,15 @@ Internal layout: :mod:`yfinance_client` snapshot → :mod:`domain` math → serv
 """
 from __future__ import annotations
 
+from aggregation_updater import AggregationUpdater, IAggregationUpdater
 import argparse
-import domain as dom
-import pandas as pd
+from dividend_loader import DividendLoader, IDividendLoader
 
 from pathlib import Path
 
-import yfinance_client as yf_client
-
 from csv_io import CsvSymbolLoader, CsvFincolIo, AzBlobCsvFincolIo
-from debug_utils import debug_print_divs_structure
 from fincol_io import ISymbolLoader, IFincolIo
 from json_io import JsonSymbolLoader
-from yfinance_client import TickerSnapshot
-
-# ---------------------------------------------------------------------------
-# Services: orchestration (each mode uses its own progressive load sequence)
-# ---------------------------------------------------------------------------
-
-def run_raw_div(symbol: str, *, verbose: bool = False) -> TickerSnapshot:
-    """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""
-    snapshot = yf_client.load_ticker(symbol).with_dividends()
-    print(f"Dividends (ex-dates) for {snapshot.symbol}")
-    if verbose:
-        debug_print_divs_structure(snapshot.divs)
-    print(snapshot.divs.to_string() if not snapshot.divs.empty else "(no dividends in series)")
-    
-    return snapshot
-
-
-def run_load_dividend_history(symbols: list[str], fincol_io: IFincolIo) -> None:
-    """Like :func:`run_raw_div`, plus append deduplicated rows to ``cache/dividend_history.csv``.
-
-    Loads data per ticker, concatenates new rows, then reads/writes cache once.
-    Input symbols are deduplicated (first occurrence wins) before fetch.
-    """
-    unique = list[str](dict.fromkeys(symbols))
-    if not unique:
-        return
-
-    frames: list[pd.DataFrame] = []
-    for symbol in unique:
-        snapshot = run_raw_div(symbol)
-        frames.append(yf_client.dividends_to_history_frame(snapshot.symbol, snapshot.divs))
-
-    new_df = pd.concat(frames, ignore_index=True)
-    x_retrieved = len(new_df)
-
-    rows_added = fincol_io.update_dividend_history(new_df)
-    
-    z_filtered = x_retrieved - rows_added
-
-    ticker_note = unique[0] if len(unique) == 1 else f"{len(unique)} ticker(s)"
-    print(
-        f"{x_retrieved} rows retrieved ({ticker_note}), "
-        f"{rows_added} rows added, {z_filtered} duplicate rows filtered out"
-    )
-
-    run_update_ttm_dividend(fincol_io)
-
-
-def run_update_ttm_dividend(fincol_io: IFincolIo) -> None:
-    """Write TTM income via ``fincol_io``."""
-
-    div_hist = fincol_io.read_dividend_history()
-    ttm_by_ticker: dict[str, float] = {}
-
-    unique_tickers = list(dict.fromkeys(div_hist["ticker"]))
-
-    for sym in unique_tickers:
-        ttm_by_ticker[sym] = dom.ttm_per_share_for_ticker(sym, div_hist)
-    fincol_io.write_ttm_income(ttm_by_ticker)
-
-    print(f"Loaded {len(unique_tickers)} ticker(s) from {fincol_io!r}")
-    for sym in unique_tickers:
-        print(f"  TTM dividend income (last {dom.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
-
-    print(f"Wrote TTM income to {fincol_io!r}")
-
 
 # ---------------------------------------------------------------------------
 # User input: CLI
@@ -147,6 +78,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    aggregation_updater: IAggregationUpdater = AggregationUpdater()
+    dividend_loader: IDividendLoader = DividendLoader()
     input_arg = args.json_file if args.json_file is not None else args.csv_file
     fincol_io: IFincolIo = AzBlobCsvFincolIo() if args.azure_csv_store else CsvFincolIo()
     if input_arg is not None:
@@ -166,15 +99,17 @@ def main() -> int:
             raise SystemExit(f"No symbols found in {loader_io!r}")
         if args.command == "raw_div":
             for sym in symbols:
-                run_raw_div(sym, verbose=args.verbose)
+                dividend_loader.retrieve_ticker_dividends(sym, verbose=args.verbose)
             return 0
-        run_load_dividend_history(symbols, fincol_io)
+        dividend_loader.update_dividend_history(symbols, fincol_io)
+        aggregation_updater.update_aggregations(fincol_io)
         return 0
     if args.command == "raw_div":
-        run_raw_div(args.symbol, verbose=args.verbose)
+        dividend_loader.retrieve_ticker_dividends(args.symbol, verbose=args.verbose)
         return 0
     if args.command == "load_dividend_history":
-        run_load_dividend_history([args.symbol], fincol_io)
+        dividend_loader.update_dividend_history([args.symbol], fincol_io)
+        aggregation_updater.update_aggregations(fincol_io)
         return 0
     raise SystemExit(f"Unsupported command: {args.command}")
 

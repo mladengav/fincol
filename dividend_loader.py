@@ -1,0 +1,82 @@
+"""
+Dividend Loader
+"""
+from __future__ import annotations
+
+import pandas as pd
+from typing import Protocol, runtime_checkable
+
+import yfinance_client as yf_client
+
+from debug_utils import debug_print_divs_structure
+from fincol_io import IFincolIo
+from yfinance_client import ITickerSnapshot
+
+# ---------------------------------------------------------------------------
+# Services: orchestration (each mode uses its own progressive load sequence)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class IDividendLoader(Protocol):
+    """Loads dividend snapshots and persists dividend history via :class:`IFincolIo`."""
+
+    def retrieve_ticker_dividends(self, symbol: str, *, verbose: bool = False) -> ITickerSnapshot: ...
+
+    def update_dividend_history(self, symbols: list[str], fincol_io: IFincolIo) -> None: ...
+
+
+class DividendLoader:
+    """Concrete Yahoo-based dividend loader."""
+
+    def retrieve_ticker_dividends(self, symbol: str, *, verbose: bool = False) -> ITickerSnapshot:
+        """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""
+        snapshot = yf_client.load_ticker(symbol).with_dividends()
+        print(f"Dividends (ex-dates) for {snapshot.symbol}")
+        if verbose:
+            debug_print_divs_structure(snapshot.divs)
+        print(snapshot.divs.to_string() if not snapshot.divs.empty else "(no dividends in series)")
+
+        return snapshot
+
+    def update_dividend_history(self, symbols: list[str], fincol_io: IFincolIo) -> None:
+        """Like :meth:`retrieve_ticker_dividends`, plus write update to fincol_io.
+
+        Loads data per ticker, concatenates new rows, then reads/writes cache once.
+        Input symbols are deduplicated (first occurrence wins) before fetch.
+        """
+        unique = list(dict.fromkeys(symbols))
+        if not unique:
+            return
+
+        frames: list[pd.DataFrame] = []
+        for symbol in unique:
+            snapshot = self.retrieve_ticker_dividends(symbol)
+            frames.append(_dividends_to_history_frame(snapshot.symbol, snapshot.divs))
+
+        new_df = pd.concat(frames, ignore_index=True)
+        x_retrieved = len(new_df)
+
+        rows_added = fincol_io.update_dividend_history(new_df)
+
+        z_filtered = x_retrieved - rows_added
+
+        ticker_note = unique[0] if len(unique) == 1 else f"{len(unique)} ticker(s)"
+        print(
+            f"{x_retrieved} rows retrieved ({ticker_note}), "
+            f"{rows_added} rows added, {z_filtered} duplicate rows filtered out"
+        )
+
+def _dividends_to_history_frame(symbol: str, divs: pd.Series) -> pd.DataFrame:
+    """One row per dividend: ticker, calendar date (YYYY-MM-DD), amount (from ``Date`` / ``Dividends`` columns)."""
+    if divs.empty:
+        return pd.DataFrame(columns=["ticker", "date", "amount"])
+    tab = divs.reset_index()
+    date_col, amt_col = tab.columns[0], tab.columns[1]
+    return pd.DataFrame(
+        {
+            "ticker": symbol,
+            "date": pd.to_datetime(tab[date_col]).dt.strftime("%Y-%m-%d"),
+            "amount": tab[amt_col].astype(float),
+        }
+    )

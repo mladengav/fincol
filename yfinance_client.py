@@ -3,14 +3,30 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
+from typing import Protocol, runtime_checkable
 
 import pandas as pd
 import yfinance as yf
 
 
+@runtime_checkable
+class ITickerSnapshot(Protocol):
+    """Public snapshot surface (no bound :class:`yf.Ticker`)."""
+
+    symbol: str
+    history_start: date
+    end: date
+    hist: pd.DataFrame
+    divs: pd.Series
+
+    def with_dividends(self) -> ITickerSnapshot: ...
+
+    def with_history(self) -> ITickerSnapshot: ...
+
+
 @dataclass
 class TickerSnapshot:
-    """Live bundle built by :func:`load_ticker` and follow-up loaders."""
+    """Live bundle built by :func:`load_ticker` and follow-up loaders; implements :class:`ITickerSnapshot`."""
 
     symbol: str
     history_start: date
@@ -19,12 +35,12 @@ class TickerSnapshot:
     hist: pd.DataFrame = field(default_factory=pd.DataFrame)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
 
-    def with_dividends(self) -> TickerSnapshot:
+    def with_dividends(self) -> ITickerSnapshot:
         """Populate ``TickerSnapshot.divs`` from the bound ticker (ex-dividend series)."""
         self.divs = self.ticker.dividends
         return self
 
-    def with_history(self) -> TickerSnapshot:
+    def with_history(self) -> ITickerSnapshot:
         """Populate ``TickerSnapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""
         self.hist = self.ticker.history(
             start=self.history_start.isoformat(),
@@ -32,7 +48,7 @@ class TickerSnapshot:
             interval="1d",
             auto_adjust=False,
         )
-        return self 
+        return self
 
 
 def load_ticker(symbol: str) -> TickerSnapshot:
@@ -45,19 +61,3 @@ def load_ticker(symbol: str) -> TickerSnapshot:
         end=end,
         ticker=yf.Ticker(symbol),
     )
-
-
-def dividends_to_history_frame(symbol: str, divs: pd.Series) -> pd.DataFrame:
-    """One row per dividend: ticker, calendar date (YYYY-MM-DD), amount (from ``Date`` / ``Dividends`` columns)."""
-    if divs.empty:
-        return pd.DataFrame(columns=["ticker", "date", "amount"])
-    tab = divs.reset_index()
-    date_col, amt_col = tab.columns[0], tab.columns[1]
-    return pd.DataFrame(
-        {
-            "ticker": symbol,
-            "date": pd.to_datetime(tab[date_col]).dt.strftime("%Y-%m-%d"),
-            "amount": tab[amt_col].astype(float),
-        }
-    )
-

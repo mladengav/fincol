@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from yfinance_client import TickerSnapshot
+    from yfinance_client import ITickerSnapshot
 
 TTM_NUM_PAYMENTS = 4
 
@@ -25,7 +25,7 @@ def _get_price_on_or_before(df: pd.DataFrame, d: date) -> pd.Series:
     return df2.iloc[-1] if not df2.empty else df.iloc[-1]
 
 
-def compute_return_periods(snapshot: TickerSnapshot) -> dict[str, dict[str, object]]:
+def compute_return_periods(snapshot: ITickerSnapshot) -> dict[str, dict[str, object]]:
     """1d, 1m, YTD metrics using ``snapshot.hist`` and ``snapshot.divs``."""
     hist = snapshot.hist
     divs = snapshot.divs
