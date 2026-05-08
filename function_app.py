@@ -8,12 +8,13 @@ from json_io import JsonSymbolLoader
 
 app = func.FunctionApp()
 
+@app.function_name(name="test")
 @app.route("hello")
 def http_trigger(req):
     user = req.params.get("user")
     return func.HttpResponse(f"Hello, {user}!")
 
-
+@app.function_name(name="fincol")
 @app.route("load-dividend-history")
 def fincol_load_dividend_history(req):
     # # Path resolution: ``PATH`` / the default ``input_symbols.json`` /
