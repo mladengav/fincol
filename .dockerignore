@@ -1,0 +1,44 @@
+.git
+.gitignore
+.gitattributes
+
+# Python artifacts
+__pycache__/
+*.py[codz]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.cache/
+
+# Local secrets and editor / OS noise
+.env
+.env.*
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Project-local caches not needed at runtime image build time
+cache/
+test/testcache/
+
+# Container artifacts
+Dockerfile
+.dockerignore
