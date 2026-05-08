@@ -35,3 +35,4 @@ def http_trigger(req):
         raise SystemExit(f"No symbols found in {loader_io!r}")
     fincol_io: IFincolIo = AzBlobCsvFincolIo() if azure_csv_store is True else CsvFincolIo()
     run_load_dividend_history(symbols, fincol_io)
+    return f"Dividend history loaded for {symbols}!"
