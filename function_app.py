@@ -15,7 +15,7 @@ def http_trigger(req):
 
 
 @app.route("load_dividend_history")
-def http_trigger(req):
+def fincol_load_dividend_history(req):
     # Path resolution: ``PATH`` / the default ``input_symbols.json`` /
     # ``input_symbols.csv`` are resolved with :class:`pathlib.Path` as usual—relative
     # names are relative to the process current working directory, not the directory
@@ -35,4 +35,4 @@ def http_trigger(req):
         raise SystemExit(f"No symbols found in {loader_io!r}")
     fincol_io: IFincolIo = AzBlobCsvFincolIo() if azure_csv_store is True else CsvFincolIo()
     run_load_dividend_history(symbols, fincol_io)
-    return f"Dividend history loaded for {symbols}!"
+    return func.HttpResponse(f"Dividend history loaded for {symbols}!", status_code=200)
