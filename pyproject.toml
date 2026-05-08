@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fincol"
+version = "0.1.0"
+description = "Command-line tools for loading Yahoo Finance dividend data and maintaining CSV-backed financial caches."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "azure-identity>=1.17",
+    "azure-storage-blob>=12.20",
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "python-dotenv>=1.0",
+    "yfinance>=0.2.40",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+fincol = "fincol:main"
+fincol_test_cli = "fincol_test_cli:main"
+yf-cli = "yf_cli:main"
+
+[tool.setuptools]
+py-modules = [
+    "csv_io",
+    "debug_utils",
+    "domain",
+    "fincol",
+    "fincol_io",
+    "fincol_test_cli",
+    "json_io",
+    "yf_cli",
+    "yfinance_client",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["*_test.py"]
