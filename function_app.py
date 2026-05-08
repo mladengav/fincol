@@ -11,28 +11,28 @@ app = func.FunctionApp()
 @app.route("hello")
 def http_trigger(req):
     user = req.params.get("user")
-    return f"Hello, {user}!"
+    return func.HttpResponse(f"Hello, {user}!")
 
 
-# @app.route("load_dividend_history")
-# def fincol_load_dividend_history(req):
-#     # # Path resolution: ``PATH`` / the default ``input_symbols.json`` /
-#     # # ``input_symbols.csv`` are resolved with :class:`pathlib.Path` as usual—relative
-#     # # names are relative to the process current working directory, not the directory
-#     # # containing this script.
-#     # input_arg = "input_symbols.json"
-#     # csv_file = None
-#     # azure_csv_store = True
-#     # path = Path(input_arg).expanduser()
-#     # if not path.is_file():
-#     #     raise SystemExit(f"Input file not found: {path}")
-#     # loader_io: ISymbolLoader = (
-#     #     CsvSymbolLoader(path) if csv_file is not None
-#     #     else JsonSymbolLoader(path)
-#     # )
-#     # symbols = loader_io.load_symbols()
-#     # if not symbols:
-#     #     raise SystemExit(f"No symbols found in {loader_io!r}")
-#     # fincol_io: IFincolIo = AzBlobCsvFincolIo() if azure_csv_store is True else CsvFincolIo()
-#     # run_load_dividend_history(symbols, fincol_io)
-#     return func.HttpResponse(f"Dividend history loaded for test !", status_code=200)
+@app.route("load-dividend-history")
+def fincol_load_dividend_history(req):
+    # # Path resolution: ``PATH`` / the default ``input_symbols.json`` /
+    # # ``input_symbols.csv`` are resolved with :class:`pathlib.Path` as usual—relative
+    # # names are relative to the process current working directory, not the directory
+    # # containing this script.
+    # input_arg = "input_symbols.json"
+    # csv_file = None
+    # azure_csv_store = True
+    # path = Path(input_arg).expanduser()
+    # if not path.is_file():
+    #     raise SystemExit(f"Input file not found: {path}")
+    # loader_io: ISymbolLoader = (
+    #     CsvSymbolLoader(path) if csv_file is not None
+    #     else JsonSymbolLoader(path)
+    # )
+    # symbols = loader_io.load_symbols()
+    # if not symbols:
+    #     raise SystemExit(f"No symbols found in {loader_io!r}")
+    # fincol_io: IFincolIo = AzBlobCsvFincolIo() if azure_csv_store is True else CsvFincolIo()
+    # run_load_dividend_history(symbols, fincol_io)
+    return func.HttpResponse(f"Dividend history loaded for test!")
