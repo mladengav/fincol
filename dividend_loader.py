@@ -10,7 +10,7 @@ import yfinance_client as yf_client
 
 from debug_utils import debug_print_divs_structure
 from domain.fincol_io import IFincolIo
-from yfinance_client import ITickerSnapshot
+from domain.ticker_snapshot import ITickerSnapshot
 
 # ---------------------------------------------------------------------------
 # Services: orchestration (each mode uses its own progressive load sequence)

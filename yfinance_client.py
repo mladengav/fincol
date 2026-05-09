@@ -3,25 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
-from typing import Protocol, runtime_checkable
 
 import pandas as pd
 import yfinance as yf
 
-
-@runtime_checkable
-class ITickerSnapshot(Protocol):
-    """Public snapshot surface (no bound :class:`yf.Ticker`)."""
-
-    symbol: str
-    history_start: date
-    end: date
-    hist: pd.DataFrame
-    divs: pd.Series
-
-    def with_dividends(self) -> ITickerSnapshot: ...
-
-    def with_history(self) -> ITickerSnapshot: ...
+from domain.ticker_snapshot import ITickerSnapshot
 
 
 @dataclass
