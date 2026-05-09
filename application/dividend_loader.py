@@ -56,7 +56,7 @@ class DividendLoader:
         frames: list[pd.DataFrame] = []
         for symbol in unique:
             snapshot = self.retrieve_ticker_dividends(symbol)
-            frames.append(_dividends_to_history_frame(snapshot.symbol, snapshot.divs))
+            frames.append(self._dividends_to_history_frame(snapshot.symbol, snapshot.divs))
 
         new_df = pd.concat(frames, ignore_index=True)
 
@@ -73,7 +73,7 @@ class DividendLoader:
             f"{rows_added} rows added, {z_filtered} duplicate rows filtered out"
         )
 
-    def _dividends_to_history_frame(symbol: str, divs: pd.Series) -> pd.DataFrame:
+    def _dividends_to_history_frame(self, symbol: str, divs: pd.Series) -> pd.DataFrame:
         """One row per dividend: ticker, calendar date (YYYY-MM-DD), amount (from ``Date`` / ``Dividends`` columns)."""
 
         if divs.empty:
