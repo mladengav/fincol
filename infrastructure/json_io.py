@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+
 from domain.fincol_io import ISymbolLoader
+
 
 class JsonSymbolLoader(ISymbolLoader):
     """:class:`ISymbolLoader` backed by a JSON array of ``{"symbol", "quantity"}`` objects at a fixed path."""
