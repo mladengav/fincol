@@ -1,6 +1,6 @@
 """CSV IO for fincol input files.
 
-Defines :class:`CsvSymbolLoader`, a concrete :class:`~fincol_io.ISymbolLoader`
+Defines :class:`CsvSymbolLoader`, a concrete :class:`~domain.fincol_io.ISymbolLoader`
 backed by a CSV file whose header includes at least ``symbol`` and
 ``quantity`` columns.
 """
@@ -16,10 +16,10 @@ from collections.abc import Mapping
 from dotenv import load_dotenv
 from pathlib import Path
 
-from fincol_io import ISymbolLoader, IFincolIo
+from domain.fincol_io import ISymbolLoader, IFincolIo
 
 class CsvSymbolLoader(ISymbolLoader):
-    """:class:`~fincol_io.ISymbolLoader` backed by a CSV file with ``symbol`` and ``quantity`` columns at a fixed path."""
+    """:class:`~domain.fincol_io.ISymbolLoader` backed by a CSV file with ``symbol`` and ``quantity`` columns at a fixed path."""
 
     def __init__(self, path: Path) -> None:
         self._path = path
