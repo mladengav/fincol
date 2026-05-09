@@ -1,4 +1,6 @@
-"""Pytest root marker: presence of this file makes the project root the rootdir
-and adds it to ``sys.path`` so test modules under ``test/`` can import the
-top-level modules (``yfinance_client``, ``fincol``, etc.) directly.
+"""Local pytest hooks and notes for this repository.
+
+Run ``pytest`` from the repository root so ``application``, ``domain``,
+``infrastructure``, and top-level modules such as ``fincol`` import the same way
+as when you run the installed CLIs from that directory.
 """

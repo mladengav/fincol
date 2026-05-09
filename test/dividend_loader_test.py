@@ -1,8 +1,9 @@
-"""Tests for :mod:`fincol`.
+"""Tests for dividend loading (live Yahoo Finance + cache CSV).
 
-These tests perform a live network call to Yahoo Finance (via
-:func:`fincol.run_load_dividend_history`) and verify cache CSV output against
-the ``testcache`` dividend fixture for ``BNS.TO``.
+These tests perform a live network call to Yahoo Finance via
+:class:`~application.dividend_loader.DividendLoader`, persist via :class:`~infrastructure.csv_io.CsvFincolIo`,
+refresh TTM aggregations via :class:`~application.aggregation_updater.AggregationUpdater`,
+and verify cache CSV output against the ``testcache`` dividend fixture for ``BNS.TO``.
 """
 from __future__ import annotations
 
@@ -12,8 +13,10 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-import fincol
-from csv_io import CsvFincolIo
+from application.aggregation_updater import AggregationUpdater
+from application.dividend_loader import DividendLoader
+from infrastructure.csv_io import CsvFincolIo
+from infrastructure.yfinance_client import YahooFinance
 
 DIVIDEND_HISTORY_CSV = Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
 
@@ -40,10 +43,15 @@ def expected_dividends_bns_to() -> pd.DataFrame:
 
 @pytest.fixture(scope="module")
 def bns_load_cache_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Ephemeral cache folder: empty before :func:`fincol.run_load_dividend_history` for BNS.TO."""
-    tmp_folder = tmp_path_factory.mktemp("fincol_bns_cache")
+    """Ephemeral cache: dividend history load + TTM aggregation for BNS.TO."""
+    tmp_folder = tmp_path_factory.mktemp("dividend_loader_bns_cache")
     fincol_io = CsvFincolIo(tmp_folder)
-    fincol.run_load_dividend_history([BNS_TO_TICKER], fincol_io)
+    dividend_loader = DividendLoader(YahooFinance(), fincol_io)
+    dividend_loader.update_dividend_history([BNS_TO_TICKER])
+
+    # TODO:  Separate into AggregationUpdater test
+    AggregationUpdater().update_aggregations(fincol_io)
+    
     return tmp_folder
 
 
@@ -56,7 +64,7 @@ def test_run_load_dividend_history_bns_to_output_contains_all_fixture_rows(
     Extra (likely more recent) rows from the live feed are allowed.
     """
     out_path = bns_load_cache_dir / "dividend_history.csv"
-    assert out_path.is_file(), f"Expected {out_path} to exist after run_load_dividend_history"
+    assert out_path.is_file(), f"Expected {out_path} to exist after dividend history update"
 
     written = pd.read_csv(out_path)
     bns = written.loc[written["ticker"] == BNS_TO_TICKER, ["date", "amount"]].copy()
@@ -78,14 +86,14 @@ def test_run_load_dividend_history_bns_to_output_contains_all_fixture_rows(
                 f"in {out_path.name} (fixture: {DIVIDEND_HISTORY_CSV.name})"
             )
 
-
+# TODO:  Separate into AggregationUpdater test
 def test_run_load_dividend_history_bns_to_ttm_income_non_negative(
     bns_load_cache_dir: Path,
 ) -> None:
     """``ttm_income.csv`` must list BNS.TO with a non-negative TTM dividend total."""
-    
+
     ttm_path = bns_load_cache_dir / "ttm_income.csv"
-    assert ttm_path.is_file(), f"Expected {ttm_path} after run_load_dividend_history"
+    assert ttm_path.is_file(), f"Expected {ttm_path} after aggregation update"
 
     df = pd.read_csv(ttm_path)
     assert "ticker" in df.columns and "ttm_dividend" in df.columns

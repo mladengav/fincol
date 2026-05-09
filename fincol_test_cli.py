@@ -2,8 +2,8 @@
 Dev/presentation CLI: display TTM dividend income for a positions file.
 
 This utility is a thin presentation layer over data already cached by
-:mod:`fincol`. It does not fetch from new data: it only reads the cache,
-performs transformations, and displays the results.
+:mod:`fincol`. It does not fetch new market data; it only reads the cache,
+aggregates positions, and displays TTM dividend income.
 """
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ import argparse
 import sys
 from pathlib import Path
 
-import domain as dom
-from fincol_io import ISymbolLoader, IFincolIo
-from csv_io import CsvSymbolLoader, CsvFincolIo
-from json_io import JsonSymbolLoader
+from application import fincol_math as fm
+from domain.fincol_io import IFincolIo, ISymbolLoader
+from infrastructure.csv_io import CsvFincolIo, CsvSymbolLoader
+from infrastructure.json_io import JsonSymbolLoader
 
 
 def load_symbols_with_quantities(loader_io: ISymbolLoader) -> list[tuple[str, float]]:
@@ -61,7 +61,7 @@ def run_display_positions_dividend(loader_io: ISymbolLoader, fincol_io: IFincolI
     positions = load_symbols_with_quantities(loader_io)
     if not positions:
         raise SystemExit(f"No symbol/quantity entries found in {loader_io!r}")
-    aggregated = dom.aggregate_positions_by_ticker(positions)
+    aggregated = fm.aggregate_positions_by_ticker(positions)
     per_share = fincol_io.read_ttm_income()
     ttm_by_ticker: dict[str, float] = {}
 
@@ -72,7 +72,7 @@ def run_display_positions_dividend(loader_io: ISymbolLoader, fincol_io: IFincolI
     for sym, qty in aggregated:
         print(f"  {sym}: {qty} shares")
     for sym, _ in aggregated:
-        print(f"  TTM dividend income (last {dom.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
+        print(f"  TTM dividend income (last {fm.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
 
     total_income = sum(ttm_by_ticker.values())
     print(f"Total TTM dividend income (all tickers in file): {total_income:.4f}")

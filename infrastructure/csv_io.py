@@ -1,6 +1,6 @@
 """CSV IO for fincol input files.
 
-Defines :class:`CsvSymbolLoader`, a concrete :class:`~fincol_io.ISymbolLoader`
+Defines :class:`CsvSymbolLoader`, a concrete :class:`~domain.fincol_io.ISymbolLoader`
 backed by a CSV file whose header includes at least ``symbol`` and
 ``quantity`` columns.
 """
@@ -8,18 +8,22 @@ from __future__ import annotations
 
 import csv
 import os
-import pandas as pd
-
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient
 from collections.abc import Mapping
-from dotenv import load_dotenv
 from pathlib import Path
 
-from fincol_io import ISymbolLoader, IFincolIo
+import pandas as pd
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+from dotenv import load_dotenv
+
+from domain.fincol_io import IFincolIo, ISymbolLoader
+
+# Repo / install layout root (parent of ``infrastructure/``): default cache and ``.env`` live here.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 class CsvSymbolLoader(ISymbolLoader):
-    """:class:`~fincol_io.ISymbolLoader` backed by a CSV file with ``symbol`` and ``quantity`` columns at a fixed path."""
+    """:class:`~domain.fincol_io.ISymbolLoader` backed by a CSV file with ``symbol`` and ``quantity`` columns at a fixed path."""
 
     def __init__(self, path: Path) -> None:
         self._path = path
@@ -69,20 +73,17 @@ class CsvSymbolLoader(ISymbolLoader):
 
 class CsvFincolIo(IFincolIo):
     """IFincolIo backed by CSV files inside a cache folder."""
-    
-    _DEFAULT_FOLDER = Path(__file__).resolve().parent / "cache"
+
+    _DEFAULT_FOLDER = _PROJECT_ROOT / "cache"
     _TTM_INCOME_CSV = "ttm_income.csv"
     _DIVIDEND_HISTORY_CSV = "dividend_history.csv"
 
-
     def __init__(self, folder: Path | None = None) -> None:
         self._folder = folder if folder is not None else self._DEFAULT_FOLDER
-    
 
     def __repr__(self) -> str:
         return f"CsvFincolIo({self._folder!s})"
 
-    
     def read_ttm_income(self) -> dict[str, float]:
         path = self._folder / self._TTM_INCOME_CSV
 
@@ -110,7 +111,6 @@ class CsvFincolIo(IFincolIo):
                     ) from e
         return result
 
-
     def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None:
         path = self._folder / self._TTM_INCOME_CSV
 
@@ -119,7 +119,6 @@ class CsvFincolIo(IFincolIo):
             f.write('"ticker","ttm_dividend"\n')
             for ticker in sorted(ttm_by_ticker):
                 f.write(f'"{ticker}",{float(ttm_by_ticker[ticker]):.4f}\n')
-
 
     def read_dividend_history(self) -> pd.DataFrame:
         path = self._folder / self._DIVIDEND_HISTORY_CSV
@@ -133,7 +132,6 @@ class CsvFincolIo(IFincolIo):
             dividend_history = pd.DataFrame(columns=["ticker", "date", "amount"])
 
         return dividend_history
-
 
     def write_dividend_history(self, body: pd.DataFrame) -> None:
         path = self._folder / self._DIVIDEND_HISTORY_CSV
@@ -167,7 +165,7 @@ class AzBlobCsvFincolIo(CsvFincolIo):
         super().__init__(folder=folder)
         self._folder.mkdir(parents=True, exist_ok=True)
 
-        load_dotenv(Path(__file__).resolve().parent / ".env")
+        load_dotenv(_PROJECT_ROOT / ".env")
         storage_url = os.environ["AZURE_STORAGE_BLOB_URL"]
         credential = DefaultAzureCredential()
         self._container_client = BlobServiceClient(
@@ -203,4 +201,3 @@ class AzBlobCsvFincolIo(CsvFincolIo):
     def write_dividend_history(self, body: pd.DataFrame) -> None:
         super().write_dividend_history(body)
         self._sync_to_azure()
-

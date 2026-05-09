@@ -1,5 +1,5 @@
 """
-Domain logic: period-return math, TTM dividend computation, and
+Math primitives: period-return computation, TTM dividend computation, and
 dividend/position transforms.
 """
 from __future__ import annotations
@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from yfinance_client import TickerSnapshot
+    from domain.ticker_snapshot import ITickerSnapshot
 
 TTM_NUM_PAYMENTS = 4
 
@@ -25,7 +25,7 @@ def _get_price_on_or_before(df: pd.DataFrame, d: date) -> pd.Series:
     return df2.iloc[-1] if not df2.empty else df.iloc[-1]
 
 
-def compute_return_periods(snapshot: TickerSnapshot) -> dict[str, dict[str, object]]:
+def compute_return_periods(snapshot: ITickerSnapshot) -> dict[str, dict[str, object]]:
     """1d, 1m, YTD metrics using ``snapshot.hist`` and ``snapshot.divs``."""
     hist = snapshot.hist
     divs = snapshot.divs
