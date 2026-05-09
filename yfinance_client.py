@@ -12,7 +12,7 @@ from domain.ticker_snapshot import ITickerSnapshot
 
 @dataclass
 class TickerSnapshot:
-    """Live bundle built by :func:`load_ticker` and follow-up loaders; implements :class:`ITickerSnapshot`."""
+    """Live bundle built by :meth:`YahooFinance.load_ticker` and follow-up loaders; implements :class:`ITickerSnapshot`."""
 
     symbol: str
     history_start: date
@@ -37,13 +37,16 @@ class TickerSnapshot:
         return self
 
 
-def load_ticker(symbol: str) -> TickerSnapshot:
-    """Create a yfinance :class:`yf.Ticker` and date window; ``hist``/``divs`` are empty until loaded."""
-    end = datetime.now(UTC).date() - timedelta(days=1)  # end = yesterday
-    history_start = end - timedelta(days=365)
-    return TickerSnapshot(
-        symbol=symbol,
-        history_start=history_start,
-        end=end,
-        ticker=yf.Ticker(symbol),
-    )
+class YahooFinance:
+    """Yahoo Finance client backed by ``yfinance``; implements :class:`~application.iyahoo_finance.IYahooFinance`."""
+
+    def load_ticker(self, symbol: str) -> TickerSnapshot:
+        """Create a yfinance :class:`yf.Ticker` and date window; ``hist``/``divs`` are empty until loaded."""
+        end = datetime.now(UTC).date() - timedelta(days=1)  # end = yesterday
+        history_start = end - timedelta(days=365)
+        return TickerSnapshot(
+            symbol=symbol,
+            history_start=history_start,
+            end=end,
+            ticker=yf.Ticker(symbol),
+        )

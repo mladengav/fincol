@@ -11,7 +11,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-import yfinance_client
+from domain.ticker_snapshot import ITickerSnapshot
+from yfinance_client import YahooFinance
 
 DIVIDEND_HISTORY_CSV = Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
 
@@ -21,6 +22,14 @@ _AMOUNT_REL_TOL = 1e-3
 _AMOUNT_ABS_TOL = 1e-4
 
 TD_TO_TICKER = "TD.TO"
+
+
+@pytest.fixture(scope="module")
+def yahoo_finance() -> YahooFinance:
+    """Shared live client for the module (one :class:`YahooFinance` per test file)."""
+    return YahooFinance()
+
+
 @pytest.fixture(scope="module")
 def expected_dividends_td_to() -> pd.DataFrame:
     """Return the ``(date, amount)`` rows for TD.TO from the cached CSV fixture."""
@@ -35,21 +44,21 @@ def expected_dividends_td_to() -> pd.DataFrame:
 
 
 @pytest.fixture(scope="module")
-def snapshot_td_to() -> yfinance_client.TickerSnapshot:
+def snapshot_td_to(yahoo_finance: YahooFinance) -> ITickerSnapshot:
     """Live :class:`TickerSnapshot` for TD.TO with dividends populated.
 
     Network call is made once per test module via ``scope="module"``.
     """
-    return yfinance_client.load_ticker(TD_TO_TICKER).with_dividends()
+    return yahoo_finance.load_ticker(TD_TO_TICKER).with_dividends()
 
 
-def test_snapshot_td_to_matches_request(snapshot_td_to: yfinance_client.TickerSnapshot) -> None:
+def test_snapshot_td_to_matches_request(snapshot_td_to: ITickerSnapshot) -> None:
     """:ive network call to Yahoo Finance for ``TD.TO`` with_dividends()`` returns successfully and preserves the requested symbol."""
     assert snapshot_td_to.symbol == TD_TO_TICKER
 
 
 def test_snapshot_td_to_dividends_contain_all_cached_entries(
-    snapshot_td_to: yfinance_client.TickerSnapshot,
+    snapshot_td_to: ITickerSnapshot,
     expected_dividends_td_to: pd.DataFrame,
 ) -> None:
     """Every dividend in the CSV fixture must appear in ``snapshot_td_to.divs`` for TD.TO.

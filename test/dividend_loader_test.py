@@ -48,7 +48,10 @@ def bns_load_cache_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     fincol_io = CsvFincolIo(tmp_folder)
     dividend_loader = DividendLoader(YahooFinance(), fincol_io)
     dividend_loader.update_dividend_history([BNS_TO_TICKER])
+
+    # TODO:  Separate into AggregationUpdater test
     AggregationUpdater().update_aggregations(fincol_io)
+    
     return tmp_folder
 
 
@@ -83,7 +86,7 @@ def test_run_load_dividend_history_bns_to_output_contains_all_fixture_rows(
                 f"in {out_path.name} (fixture: {DIVIDEND_HISTORY_CSV.name})"
             )
 
-
+# TODO:  Separate into AggregationUpdater test
 def test_run_load_dividend_history_bns_to_ttm_income_non_negative(
     bns_load_cache_dir: Path,
 ) -> None:
