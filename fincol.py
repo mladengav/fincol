@@ -11,6 +11,7 @@ from dividend_loader import DividendLoader, IDividendLoader
 from pathlib import Path
 
 from csv_io import CsvSymbolLoader, CsvFincolIo, AzBlobCsvFincolIo
+from yfinance_client import YahooFinance
 from domain.fincol_io import ISymbolLoader, IFincolIo
 from json_io import JsonSymbolLoader
 
@@ -79,9 +80,9 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     aggregation_updater: IAggregationUpdater = AggregationUpdater()
-    dividend_loader: IDividendLoader = DividendLoader()
     input_arg = args.json_file if args.json_file is not None else args.csv_file
     fincol_io: IFincolIo = AzBlobCsvFincolIo() if args.azure_csv_store else CsvFincolIo()
+    dividend_loader: IDividendLoader = DividendLoader(YahooFinance(), fincol_io)
     if input_arg is not None:
         # Path resolution: ``PATH`` / the default ``input_symbols.json`` /
         # ``input_symbols.csv`` are resolved with :class:`pathlib.Path` as usual—relative
@@ -101,14 +102,14 @@ def main() -> int:
             for sym in symbols:
                 dividend_loader.retrieve_ticker_dividends(sym, verbose=args.verbose)
             return 0
-        dividend_loader.update_dividend_history(symbols, fincol_io)
+        dividend_loader.update_dividend_history(symbols)
         aggregation_updater.update_aggregations(fincol_io)
         return 0
     if args.command == "raw_div":
         dividend_loader.retrieve_ticker_dividends(args.symbol, verbose=args.verbose)
         return 0
     if args.command == "load_dividend_history":
-        dividend_loader.update_dividend_history([args.symbol], fincol_io)
+        dividend_loader.update_dividend_history([args.symbol])
         aggregation_updater.update_aggregations(fincol_io)
         return 0
     raise SystemExit(f"Unsupported command: {args.command}")

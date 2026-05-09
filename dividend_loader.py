@@ -6,8 +6,7 @@ from __future__ import annotations
 import pandas as pd
 from typing import Protocol, runtime_checkable
 
-import yfinance_client as yf_client
-
+from application.iyahoo_finance import IYahooFinance
 from debug_utils import debug_print_divs_structure
 from domain.fincol_io import IFincolIo
 from domain.ticker_snapshot import ITickerSnapshot
@@ -23,15 +22,19 @@ class IDividendLoader(Protocol):
 
     def retrieve_ticker_dividends(self, symbol: str, *, verbose: bool = False) -> ITickerSnapshot: ...
 
-    def update_dividend_history(self, symbols: list[str], fincol_io: IFincolIo) -> None: ...
+    def update_dividend_history(self, symbols: list[str]) -> None: ...
 
 
 class DividendLoader:
     """Concrete Yahoo-based dividend loader."""
 
+    def __init__(self, yahoo_finance: IYahooFinance, fincol_io: IFincolIo) -> None:
+        self.yahoo_finance = yahoo_finance
+        self.fincol_io = fincol_io
+
     def retrieve_ticker_dividends(self, symbol: str, *, verbose: bool = False) -> ITickerSnapshot:
         """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""
-        snapshot = yf_client.load_ticker(symbol).with_dividends()
+        snapshot = self.yahoo_finance.load_ticker(symbol).with_dividends()
         print(f"Dividends (ex-dates) for {snapshot.symbol}")
         if verbose:
             debug_print_divs_structure(snapshot.divs)
@@ -39,7 +42,7 @@ class DividendLoader:
 
         return snapshot
 
-    def update_dividend_history(self, symbols: list[str], fincol_io: IFincolIo) -> None:
+    def update_dividend_history(self, symbols: list[str]) -> None:
         """Like :meth:`retrieve_ticker_dividends`, plus write update to fincol_io.
 
         Loads data per ticker, concatenates new rows, then reads/writes cache once.
@@ -57,7 +60,7 @@ class DividendLoader:
         new_df = pd.concat(frames, ignore_index=True)
         x_retrieved = len(new_df)
 
-        rows_added = fincol_io.update_dividend_history(new_df)
+        rows_added = self.fincol_io.update_dividend_history(new_df)
 
         z_filtered = x_retrieved - rows_added
 
