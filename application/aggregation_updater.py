@@ -1,11 +1,9 @@
-"""
-Aggregation Updater
-"""
+"""Derived cache fields (for example TTM dividend income per ticker)."""
 from __future__ import annotations
 
-from application import fincol_math as fm
 from typing import Protocol, runtime_checkable
 
+from application import fincol_math as fm
 from domain.fincol_io import IFincolIo
 
 

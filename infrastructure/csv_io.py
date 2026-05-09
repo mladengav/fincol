@@ -8,15 +8,15 @@ from __future__ import annotations
 
 import csv
 import os
-import pandas as pd
-
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient
 from collections.abc import Mapping
-from dotenv import load_dotenv
 from pathlib import Path
 
-from domain.fincol_io import ISymbolLoader, IFincolIo
+import pandas as pd
+from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobServiceClient
+from dotenv import load_dotenv
+
+from domain.fincol_io import IFincolIo, ISymbolLoader
 
 # Repo / install layout root (parent of ``infrastructure/``): default cache and ``.env`` live here.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent

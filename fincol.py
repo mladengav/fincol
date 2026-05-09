@@ -1,19 +1,20 @@
 """
-CLI entry: raw dividend output vs. return computation for a symbol.
-Internal layout: :mod:`infrastructure.yfinance_client` snapshot → :mod:`application.fincol_math` → services → argparse.
+CLI entry: Yahoo dividend display and cache updates for one or many tickers.
+
+Wiring: :mod:`infrastructure.yfinance_client` (live data) → :mod:`application.dividend_loader` /
+:mod:`application.aggregation_updater` → :mod:`infrastructure.csv_io` (cache I/O) and argparse.
 """
 from __future__ import annotations
 
 import argparse
-
 from pathlib import Path
 
 from application.aggregation_updater import AggregationUpdater, IAggregationUpdater
 from application.dividend_loader import DividendLoader, IDividendLoader
+from domain.fincol_io import IFincolIo, ISymbolLoader
 from infrastructure.csv_io import AzBlobCsvFincolIo, CsvFincolIo, CsvSymbolLoader
-from infrastructure.yfinance_client import YahooFinance
-from domain.fincol_io import ISymbolLoader, IFincolIo
 from infrastructure.json_io import JsonSymbolLoader
+from infrastructure.yfinance_client import YahooFinance
 
 # ---------------------------------------------------------------------------
 # User input: CLI

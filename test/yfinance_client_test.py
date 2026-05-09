@@ -1,7 +1,7 @@
 """Tests for :mod:`infrastructure.yfinance_client`.
 
 These tests perform a live network call to Yahoo Finance for the ticker(s) under test
-and verify that the varios data structures are populated correctly.
+and verify that the expected dividend data structures are populated correctly.
 """
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def snapshot_td_to(yahoo_finance: YahooFinance) -> ITickerSnapshot:
 
 
 def test_snapshot_td_to_matches_request(snapshot_td_to: ITickerSnapshot) -> None:
-    """:ive network call to Yahoo Finance for ``TD.TO`` with_dividends()`` returns successfully and preserves the requested symbol."""
+    """Live Yahoo call for ``TD.TO`` with :meth:`~domain.ticker_snapshot.ITickerSnapshot.with_dividends` succeeds and preserves the symbol."""
     assert snapshot_td_to.symbol == TD_TO_TICKER
 
 

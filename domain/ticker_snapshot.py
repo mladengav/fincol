@@ -1,4 +1,4 @@
-"""Public snapshot surface used by domain math and loaders."""
+"""Public snapshot surface used by math helpers and Yahoo-backed loaders."""
 from __future__ import annotations
 
 from datetime import date
@@ -6,10 +6,9 @@ from typing import Protocol, runtime_checkable
 
 import pandas as pd
 
-
 @runtime_checkable
 class ITickerSnapshot(Protocol):
-    """Public snapshot surface used by domain math and loaders."""
+    """Bundle of symbol, date window, price history, and dividend series from Yahoo."""
 
     symbol: str
     history_start: date

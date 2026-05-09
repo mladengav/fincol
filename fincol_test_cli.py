@@ -2,8 +2,8 @@
 Dev/presentation CLI: display TTM dividend income for a positions file.
 
 This utility is a thin presentation layer over data already cached by
-:mod:`fincol`. It does not fetch from new data: it only reads the cache,
-performs transformations, and displays the results.
+:mod:`fincol`. It does not fetch new market data; it only reads the cache,
+aggregates positions, and displays TTM dividend income.
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from application import fincol_math as fm
-from domain.fincol_io import ISymbolLoader, IFincolIo
+from domain.fincol_io import IFincolIo, ISymbolLoader
 from infrastructure.csv_io import CsvFincolIo, CsvSymbolLoader
 from infrastructure.json_io import JsonSymbolLoader
 

@@ -1,9 +1,4 @@
-"""JSON IO for fincol input files.
-
-Defines the :class:`ISymbolLoader` Protocol (the abstract surface used by
-:mod:`fincol`) and :class:`JsonSymbolLoader`, the concrete JSON-backed
-implementation that encapsulates its source path.
-"""
+"""JSON-backed :class:`~domain.fincol_io.ISymbolLoader` for fincol-style position files."""
 from __future__ import annotations
 
 import json
@@ -13,7 +8,7 @@ from domain.fincol_io import ISymbolLoader
 
 
 class JsonSymbolLoader(ISymbolLoader):
-    """:class:`ISymbolLoader` backed by a JSON array of ``{"symbol", "quantity"}`` objects at a fixed path."""
+    """Load symbols from a JSON array of ``{"symbol", "quantity"}`` objects at a fixed path."""
 
     def __init__(self, path: Path) -> None:
         self._path = path
