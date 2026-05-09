@@ -3,7 +3,7 @@ Aggregation Updater
 """
 from __future__ import annotations
 
-import fincol_math as fm
+from application import fincol_math as fm
 from typing import Protocol, runtime_checkable
 
 from domain.fincol_io import IFincolIo

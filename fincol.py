@@ -1,10 +1,10 @@
 """
 CLI entry: raw dividend output vs. return computation for a symbol.
-Internal layout: :mod:`yfinance_client` snapshot → :mod:`fincol_math` → services → argparse.
+Internal layout: :mod:`yfinance_client` snapshot → :mod:`application.fincol_math` → services → argparse.
 """
 from __future__ import annotations
 
-from aggregation_updater import AggregationUpdater, IAggregationUpdater
+from application.aggregation_updater import AggregationUpdater, IAggregationUpdater
 import argparse
 from dividend_loader import DividendLoader, IDividendLoader
 

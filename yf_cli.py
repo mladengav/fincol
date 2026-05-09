@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 
-import fincol_math as fm
+from application import fincol_math as fm
 import yfinance_client as yf_client
 
 

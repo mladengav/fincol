@@ -32,13 +32,12 @@ py-modules = [
     "csv_io",
     "debug_utils",
     "fincol",
-    "fincol_math",
     "fincol_test_cli",
     "json_io",
     "yf_cli",
     "yfinance_client",
 ]
-packages = ["domain"]
+packages = ["application", "domain"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
