@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 
-import domain as dom
+import fincol_math as fm
 import yfinance_client as yf_client
 
 
@@ -12,7 +12,7 @@ def run_fetch_and_compute(symbol: str) -> dict[str, dict[str, object]]:
     snapshot = yf_client.load_ticker(symbol).with_dividends().with_history()
     if snapshot.hist.empty:
         raise RuntimeError("No price data returned for " + snapshot.symbol)
-    return dom.compute_return_periods(snapshot)
+    return fm.compute_return_periods(snapshot)
 
 
 def print_return_report(results: dict[str, dict[str, object]]) -> None:

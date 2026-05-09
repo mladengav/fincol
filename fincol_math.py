@@ -1,5 +1,5 @@
 """
-Domain logic: period-return math, TTM dividend computation, and
+Math primitives: period-return computation, TTM dividend computation, and
 dividend/position transforms.
 """
 from __future__ import annotations

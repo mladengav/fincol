@@ -1,6 +1,6 @@
 """
 CLI entry: raw dividend output vs. return computation for a symbol.
-Internal layout: :mod:`yfinance_client` snapshot → :mod:`domain` math → services → argparse.
+Internal layout: :mod:`yfinance_client` snapshot → :mod:`fincol_math` → services → argparse.
 """
 from __future__ import annotations
 

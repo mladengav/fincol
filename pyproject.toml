@@ -31,9 +31,9 @@ yf-cli = "yf_cli:main"
 py-modules = [
     "csv_io",
     "debug_utils",
-    "domain",
     "fincol",
     "fincol_io",
+    "fincol_math",
     "fincol_test_cli",
     "json_io",
     "yf_cli",

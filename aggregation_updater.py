@@ -3,7 +3,7 @@ Aggregation Updater
 """
 from __future__ import annotations
 
-import domain as dom
+import fincol_math as fm
 from typing import Protocol, runtime_checkable
 
 from fincol_io import IFincolIo
@@ -32,11 +32,11 @@ class AggregationUpdater:
         unique_tickers = list(dict.fromkeys(div_hist["ticker"]))
 
         for sym in unique_tickers:
-            ttm_by_ticker[sym] = dom.ttm_per_share_for_ticker(sym, div_hist)
+            ttm_by_ticker[sym] = fm.ttm_per_share_for_ticker(sym, div_hist)
         fincol_io.write_ttm_income(ttm_by_ticker)
 
         print(f"Loaded {len(unique_tickers)} ticker(s) from {fincol_io!r}")
         for sym in unique_tickers:
-            print(f"  TTM dividend income (last {dom.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
+            print(f"  TTM dividend income (last {fm.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
 
         print(f"Wrote TTM income to {fincol_io!r}")
