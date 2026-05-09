@@ -32,7 +32,6 @@ py-modules = [
     "debug_utils",
     "fincol",
     "fincol_test_cli",
-    "json_io",
     "yf_cli",
     "yfinance_client",
 ]

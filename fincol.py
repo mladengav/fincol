@@ -13,7 +13,7 @@ from application.dividend_loader import DividendLoader, IDividendLoader
 from infrastructure.csv_io import AzBlobCsvFincolIo, CsvFincolIo, CsvSymbolLoader
 from yfinance_client import YahooFinance
 from domain.fincol_io import ISymbolLoader, IFincolIo
-from json_io import JsonSymbolLoader
+from infrastructure.json_io import JsonSymbolLoader
 
 # ---------------------------------------------------------------------------
 # User input: CLI

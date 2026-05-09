@@ -14,7 +14,7 @@ from pathlib import Path
 from application import fincol_math as fm
 from domain.fincol_io import ISymbolLoader, IFincolIo
 from infrastructure.csv_io import CsvFincolIo, CsvSymbolLoader
-from json_io import JsonSymbolLoader
+from infrastructure.json_io import JsonSymbolLoader
 
 
 def load_symbols_with_quantities(loader_io: ISymbolLoader) -> list[tuple[str, float]]:
