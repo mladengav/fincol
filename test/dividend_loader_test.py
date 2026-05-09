@@ -16,7 +16,7 @@ import pytest
 from application.aggregation_updater import AggregationUpdater
 from application.dividend_loader import DividendLoader
 from infrastructure.csv_io import CsvFincolIo
-from yfinance_client import YahooFinance
+from infrastructure.yfinance_client import YahooFinance
 
 DIVIDEND_HISTORY_CSV = Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
 

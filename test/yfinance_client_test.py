@@ -1,4 +1,4 @@
-"""Tests for :mod:`yfinance_client`.
+"""Tests for :mod:`infrastructure.yfinance_client`.
 
 These tests perform a live network call to Yahoo Finance for the ticker(s) under test
 and verify that the varios data structures are populated correctly.
@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 
 from domain.ticker_snapshot import ITickerSnapshot
-from yfinance_client import YahooFinance
+from infrastructure.yfinance_client import YahooFinance
 
 DIVIDEND_HISTORY_CSV = Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
 

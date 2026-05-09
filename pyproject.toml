@@ -33,7 +33,6 @@ py-modules = [
     "fincol",
     "fincol_test_cli",
     "yf_cli",
-    "yfinance_client",
 ]
 packages = ["application", "domain", "infrastructure"]
 

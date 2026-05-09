@@ -1,6 +1,6 @@
 """
 CLI entry: raw dividend output vs. return computation for a symbol.
-Internal layout: :mod:`yfinance_client` snapshot → :mod:`application.fincol_math` → services → argparse.
+Internal layout: :mod:`infrastructure.yfinance_client` snapshot → :mod:`application.fincol_math` → services → argparse.
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 from application.aggregation_updater import AggregationUpdater, IAggregationUpdater
 from application.dividend_loader import DividendLoader, IDividendLoader
 from infrastructure.csv_io import AzBlobCsvFincolIo, CsvFincolIo, CsvSymbolLoader
-from yfinance_client import YahooFinance
+from infrastructure.yfinance_client import YahooFinance
 from domain.fincol_io import ISymbolLoader, IFincolIo
 from infrastructure.json_io import JsonSymbolLoader
 

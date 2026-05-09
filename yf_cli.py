@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 
 from application import fincol_math as fm
-from yfinance_client import YahooFinance
+from infrastructure.yfinance_client import YahooFinance
 
 
 def run_fetch_and_compute(symbol: str) -> dict[str, dict[str, object]]:

@@ -1,10 +1,10 @@
-"""Protocol for Yahoo Finance snapshot loading (implementation lives in :mod:`yfinance_client`)."""
+"""Protocol for Yahoo Finance snapshot loading (implementation lives in :mod:`infrastructure.yfinance_client`)."""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from yfinance_client import TickerSnapshot
+    from infrastructure.yfinance_client import TickerSnapshot
 
 
 class IYahooFinance(Protocol):
