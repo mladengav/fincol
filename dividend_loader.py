@@ -9,7 +9,7 @@ from typing import Protocol, runtime_checkable
 import yfinance_client as yf_client
 
 from debug_utils import debug_print_divs_structure
-from fincol_io import IFincolIo
+from domain.fincol_io import IFincolIo
 from yfinance_client import ITickerSnapshot
 
 # ---------------------------------------------------------------------------

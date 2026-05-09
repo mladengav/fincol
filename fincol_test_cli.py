@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 import fincol_math as fm
-from fincol_io import ISymbolLoader, IFincolIo
+from domain.fincol_io import ISymbolLoader, IFincolIo
 from csv_io import CsvSymbolLoader, CsvFincolIo
 from json_io import JsonSymbolLoader
 

@@ -11,7 +11,7 @@ from dividend_loader import DividendLoader, IDividendLoader
 from pathlib import Path
 
 from csv_io import CsvSymbolLoader, CsvFincolIo, AzBlobCsvFincolIo
-from fincol_io import ISymbolLoader, IFincolIo
+from domain.fincol_io import ISymbolLoader, IFincolIo
 from json_io import JsonSymbolLoader
 
 # ---------------------------------------------------------------------------

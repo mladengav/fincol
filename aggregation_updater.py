@@ -6,7 +6,7 @@ from __future__ import annotations
 import fincol_math as fm
 from typing import Protocol, runtime_checkable
 
-from fincol_io import IFincolIo
+from domain.fincol_io import IFincolIo
 
 
 @runtime_checkable
