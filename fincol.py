@@ -4,12 +4,12 @@ Internal layout: :mod:`yfinance_client` snapshot → :mod:`application.fincol_ma
 """
 from __future__ import annotations
 
-from application.aggregation_updater import AggregationUpdater, IAggregationUpdater
 import argparse
-from dividend_loader import DividendLoader, IDividendLoader
 
 from pathlib import Path
 
+from application.aggregation_updater import AggregationUpdater, IAggregationUpdater
+from application.dividend_loader import DividendLoader, IDividendLoader
 from csv_io import CsvSymbolLoader, CsvFincolIo, AzBlobCsvFincolIo
 from yfinance_client import YahooFinance
 from domain.fincol_io import ISymbolLoader, IFincolIo
