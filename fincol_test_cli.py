@@ -13,7 +13,7 @@ from pathlib import Path
 
 from application import fincol_math as fm
 from domain.fincol_io import ISymbolLoader, IFincolIo
-from csv_io import CsvSymbolLoader, CsvFincolIo
+from infrastructure.csv_io import CsvFincolIo, CsvSymbolLoader
 from json_io import JsonSymbolLoader
 
 

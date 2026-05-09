@@ -10,7 +10,7 @@ from pathlib import Path
 
 from application.aggregation_updater import AggregationUpdater, IAggregationUpdater
 from application.dividend_loader import DividendLoader, IDividendLoader
-from csv_io import CsvSymbolLoader, CsvFincolIo, AzBlobCsvFincolIo
+from infrastructure.csv_io import AzBlobCsvFincolIo, CsvFincolIo, CsvSymbolLoader
 from yfinance_client import YahooFinance
 from domain.fincol_io import ISymbolLoader, IFincolIo
 from json_io import JsonSymbolLoader

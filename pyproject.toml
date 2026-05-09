@@ -29,7 +29,6 @@ yf-cli = "yf_cli:main"
 
 [tool.setuptools]
 py-modules = [
-    "csv_io",
     "debug_utils",
     "fincol",
     "fincol_test_cli",
@@ -37,7 +36,7 @@ py-modules = [
     "yf_cli",
     "yfinance_client",
 ]
-packages = ["application", "domain"]
+packages = ["application", "domain", "infrastructure"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]

@@ -1,7 +1,7 @@
 """Tests for dividend loading (live Yahoo Finance + cache CSV).
 
 These tests perform a live network call to Yahoo Finance via
-:class:`~application.dividend_loader.DividendLoader`, persist via :class:`~csv_io.CsvFincolIo`,
+:class:`~application.dividend_loader.DividendLoader`, persist via :class:`~infrastructure.csv_io.CsvFincolIo`,
 refresh TTM aggregations via :class:`~application.aggregation_updater.AggregationUpdater`,
 and verify cache CSV output against the ``testcache`` dividend fixture for ``BNS.TO``.
 """
@@ -15,7 +15,7 @@ import pytest
 
 from application.aggregation_updater import AggregationUpdater
 from application.dividend_loader import DividendLoader
-from csv_io import CsvFincolIo
+from infrastructure.csv_io import CsvFincolIo
 from yfinance_client import YahooFinance
 
 DIVIDEND_HISTORY_CSV = Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
