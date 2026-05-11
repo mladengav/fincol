@@ -25,9 +25,10 @@ COPY pyproject.toml README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev --no-install-project
 
-# Add the project sources and install the package itself into the venv,
-# which materializes the `fincol`, `fincol_test_cli`, and `yf-cli` console scripts.
-COPY . ./
+# Installable code lives under src/ (see [tool.setuptools] in pyproject.toml).
+# Copy only what the package needs so the image build matches the src layout.
+COPY src ./src/
+# `uv sync` installs fincol and materializes fincol / fincol_test_cli / yf-cli (presentation_cli entry points).
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev
 
