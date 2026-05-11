@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from domain.ticker_snapshot import ITickerSnapshot
+from domain.iticker_snapshot import ITickerSnapshot
 from infrastructure.yfinance_client import YahooFinance
 
 DIVIDEND_HISTORY_CSV = Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
@@ -53,7 +53,7 @@ def snapshot_td_to(yahoo_finance: YahooFinance) -> ITickerSnapshot:
 
 
 def test_snapshot_td_to_matches_request(snapshot_td_to: ITickerSnapshot) -> None:
-    """Live Yahoo call for ``TD.TO`` with :meth:`~domain.ticker_snapshot.ITickerSnapshot.with_dividends` succeeds and preserves the symbol."""
+    """Live Yahoo call for ``TD.TO`` with :meth:`~domain.iticker_snapshot.ITickerSnapshot.with_dividends` succeeds and preserves the symbol."""
     assert snapshot_td_to.symbol == TD_TO_TICKER
 
 

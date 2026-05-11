@@ -23,19 +23,17 @@ dev = [
 ]
 
 [project.scripts]
-fincol = "fincol:main"
-fincol_test_cli = "fincol_test_cli:main"
-yf-cli = "yf_cli:main"
+fincol = "presentation_cli.fincol:main"
+fincol_test_cli = "presentation_cli.fincol_test_cli:main"
+yf-cli = "presentation_cli.yf_cli:main"
 
 [tool.setuptools]
-py-modules = [
-    "debug_utils",
-    "fincol",
-    "fincol_test_cli",
-    "yf_cli",
-]
-packages = ["application", "domain", "infrastructure"]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
 python_files = ["*_test.py"]
+pythonpath = ["src"]

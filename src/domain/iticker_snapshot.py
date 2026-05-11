@@ -6,6 +6,7 @@ from typing import Protocol, runtime_checkable
 
 import pandas as pd
 
+
 @runtime_checkable
 class ITickerSnapshot(Protocol):
     """Bundle of symbol, date window, price history, and dividend series from Yahoo."""
