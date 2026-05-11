@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime, timedelta
 import pandas as pd
 import yfinance as yf
 
-from domain.ticker_snapshot import ITickerSnapshot
+from domain.iticker_snapshot import ITickerSnapshot
 
 
 @dataclass

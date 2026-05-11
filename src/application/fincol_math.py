@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from domain.ticker_snapshot import ITickerSnapshot
+    from domain.iticker_snapshot import ITickerSnapshot
 
 TTM_NUM_PAYMENTS = 4
 

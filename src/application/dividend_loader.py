@@ -8,7 +8,7 @@ import pandas as pd
 from application.iyahoo_finance import IYahooFinance
 from application.debug_utils import debug_print_divs_structure
 from domain.fincol_io import IFincolIo
-from domain.ticker_snapshot import ITickerSnapshot
+from domain.iticker_snapshot import ITickerSnapshot
 
 
 @runtime_checkable
