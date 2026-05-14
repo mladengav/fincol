@@ -44,7 +44,7 @@ def load_symbols_with_quantities(loader_io: ISymbolLoader) -> list[tuple[str, fl
         try:
             sym_str = str(sym)
             qty_val = float(qty)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             print(
                 f"Warning: skipping entry #{i} with bad types from {loader_io!r}: {item!r}",
                 file=sys.stderr,

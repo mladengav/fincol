@@ -129,7 +129,7 @@ class CsvFincolIo(IFincolIo):
         if path.exists() and path.stat().st_size > 0:
             try:
                 dividend_history = pd.read_csv(path)
-            except (pd.errors.EmptyDataError, pd.errors.ParserError):
+            except pd.errors.EmptyDataError, pd.errors.ParserError:
                 dividend_history = pd.DataFrame(columns=["ticker", "date", "amount"])
         else:
             dividend_history = pd.DataFrame(columns=["ticker", "date", "amount"])
