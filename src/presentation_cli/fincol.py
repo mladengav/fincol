@@ -4,6 +4,7 @@ CLI entry: Yahoo dividend display and cache updates for one or many tickers.
 Wiring: :mod:`infrastructure.yfinance_client` (live data) → :mod:`application.dividend_loader` /
 :mod:`application.aggregation_updater` → :mod:`infrastructure.csv_io` (cache I/O) and argparse.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,7 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         default="raw_div",
         choices=("raw_div", "load_dividend_history"),
-        help='Mode: print dividend series (default), or save dividends to cache CSV. '
+        help="Mode: print dividend series (default), or save dividends to cache CSV. "
         'Default: "%(default)s".',
     )
     parser.add_argument(
@@ -82,7 +83,9 @@ def main() -> int:
     args = build_parser().parse_args()
     aggregation_updater: IAggregationUpdater = AggregationUpdater()
     input_arg = args.json_file if args.json_file is not None else args.csv_file
-    fincol_io: IFincolIo = AzBlobCsvFincolIo() if args.azure_csv_store else CsvFincolIo()
+    fincol_io: IFincolIo = (
+        AzBlobCsvFincolIo() if args.azure_csv_store else CsvFincolIo()
+    )
     dividend_loader: IDividendLoader = DividendLoader(YahooFinance(), fincol_io)
     if input_arg is not None:
         # Path resolution: ``PATH`` / the default ``input_symbols.json`` /
@@ -93,7 +96,8 @@ def main() -> int:
         if not path.is_file():
             raise SystemExit(f"Input file not found: {path}")
         loader_io: ISymbolLoader = (
-            CsvSymbolLoader(path) if args.csv_file is not None
+            CsvSymbolLoader(path)
+            if args.csv_file is not None
             else JsonSymbolLoader(path)
         )
         symbols = loader_io.load_symbols()

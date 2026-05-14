@@ -1,4 +1,5 @@
 """Public snapshot surface used by math helpers and Yahoo-backed loaders."""
+
 from __future__ import annotations
 
 from datetime import date

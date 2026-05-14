@@ -1,4 +1,5 @@
 """Derived cache fields (for example TTM dividend income per ticker)."""
+
 from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
@@ -35,6 +36,8 @@ class AggregationUpdater:
 
         print(f"Loaded {len(unique_tickers)} ticker(s) from {fincol_io!r}")
         for sym in unique_tickers:
-            print(f"  TTM dividend income (last {fm.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
+            print(
+                f"  TTM dividend income (last {fm.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}"
+            )
 
         print(f"Wrote TTM income to {fincol_io!r}")

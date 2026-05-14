@@ -1,4 +1,5 @@
 """JSON-backed :class:`~domain.fincol_io.ISymbolLoader` for fincol-style position files."""
+
 from __future__ import annotations
 
 import json
@@ -27,7 +28,11 @@ class JsonSymbolLoader(ISymbolLoader):
             raise ValueError(f"JSON root must be an array, got {type(data).__name__}")
         symbols: list[str] = []
         for item in data:
-            if isinstance(item, dict) and "symbol" in item and item["symbol"] is not None:
+            if (
+                isinstance(item, dict)
+                and "symbol" in item
+                and item["symbol"] is not None
+            ):
                 symbols.append(str(item["symbol"]))
         return symbols
 
@@ -38,7 +43,11 @@ class JsonSymbolLoader(ISymbolLoader):
             raise ValueError(f"JSON root must be an array, got {type(data).__name__}")
         rows: list[tuple[str, float]] = []
         for item in data:
-            if not isinstance(item, dict) or "symbol" not in item or item["symbol"] is None:
+            if (
+                not isinstance(item, dict)
+                or "symbol" not in item
+                or item["symbol"] is None
+            ):
                 continue
             q = item.get("quantity")
             if q is None:

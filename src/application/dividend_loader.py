@@ -1,12 +1,13 @@
 """Load Yahoo dividend snapshots and merge them into dividend history via :class:`~domain.fincol_io.IFincolIo`."""
+
 from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
 import pandas as pd
 
-from application.iyahoo_finance import IYahooFinance
 from application.debug_utils import debug_print_divs_structure
+from application.iyahoo_finance import IYahooFinance
 from domain.fincol_io import IFincolIo
 from domain.iticker_snapshot import ITickerSnapshot
 
@@ -15,7 +16,9 @@ from domain.iticker_snapshot import ITickerSnapshot
 class IDividendLoader(Protocol):
     """Loads dividend snapshots and persists dividend history via :class:`IFincolIo`."""
 
-    def retrieve_ticker_dividends(self, symbol: str, *, verbose: bool = False) -> ITickerSnapshot: ...
+    def retrieve_ticker_dividends(
+        self, symbol: str, *, verbose: bool = False
+    ) -> ITickerSnapshot: ...
 
     def update_dividend_history(self, symbols: list[str]) -> None: ...
 
@@ -27,13 +30,19 @@ class DividendLoader:
         self.yahoo_finance = yahoo_finance
         self.fincol_io = fincol_io
 
-    def retrieve_ticker_dividends(self, symbol: str, *, verbose: bool = False) -> ITickerSnapshot:
+    def retrieve_ticker_dividends(
+        self, symbol: str, *, verbose: bool = False
+    ) -> ITickerSnapshot:
         """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""
         snapshot = self.yahoo_finance.load_ticker(symbol).with_dividends()
         print(f"Dividends (ex-dates) for {snapshot.symbol}")
         if verbose:
             debug_print_divs_structure(snapshot.divs)
-        print(snapshot.divs.to_string() if not snapshot.divs.empty else "(no dividends in series)")
+        print(
+            snapshot.divs.to_string()
+            if not snapshot.divs.empty
+            else "(no dividends in series)"
+        )
 
         return snapshot
 
@@ -50,7 +59,9 @@ class DividendLoader:
         frames: list[pd.DataFrame] = []
         for symbol in unique:
             snapshot = self.retrieve_ticker_dividends(symbol)
-            frames.append(self._dividends_to_history_frame(snapshot.symbol, snapshot.divs))
+            frames.append(
+                self._dividends_to_history_frame(snapshot.symbol, snapshot.divs)
+            )
 
         new_df = pd.concat(frames, ignore_index=True)
         x_retrieved = len(new_df)

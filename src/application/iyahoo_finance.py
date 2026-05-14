@@ -1,4 +1,5 @@
 """Protocol for Yahoo Finance snapshot loading (:class:`~infrastructure.yfinance_client.YahooFinance`)."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
