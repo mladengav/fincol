@@ -57,7 +57,6 @@ class TickerSnapshot:
     industryKey: str
     exDividendDateUtc: date
     ticker: yf.Ticker = field(repr=False)
-    hist: pd.DataFrame = field(default_factory=pd.DataFrame)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
 
     def with_dividends(self) -> TickerSnapshot:
@@ -65,9 +64,15 @@ class TickerSnapshot:
         self.divs = self.ticker.dividends
         return self
 
-    def with_history(self) -> TickerSnapshot:
-        """Load price history when implemented; until then ``hist`` stays empty."""
-        return self
+    def get_history(self, history_start: date, end: date) -> TickerSnapshot:
+        """Populate ``TickerSnapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""
+        hist = self.ticker.history(
+            start = history_start.isoformat(),
+            end= (end + timedelta(days=1)).isoformat(),
+            interval="1d",
+            auto_adjust=False
+        )
+        return hist
     
     def with_info(self) -> TickerSnapshot:
         """Load price history when implemented; until then ``hist`` stays empty."""

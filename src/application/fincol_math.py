@@ -5,7 +5,7 @@ dividend/position transforms.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
@@ -28,11 +28,15 @@ def _get_price_on_or_before(df: pd.DataFrame, d: date) -> pd.Series:
     return df2.iloc[-1] if not df2.empty else df.iloc[-1]
 
 
-def compute_return_periods(snapshot: ITickerSnapshot) -> dict[str, dict[str, object]]:
+def compute_return_periods(snapshot: ITickerSnapshot, history_start: date) -> dict[str, dict[str, object]]:
     """1d, 1m, YTD metrics using ``snapshot.hist`` and ``snapshot.divs``."""
-    hist = snapshot.hist
+    today = datetime.now().date()
+    hist = snapshot.get_history(history_start, today)
+
+    if hist.empty:
+        raise RuntimeError("No price data returned for " + snapshot.symbol)
+
     divs = snapshot.divs
-    today = snapshot.end
     periods: dict[str, tuple[date, date]] = {
         "1d": (today - timedelta(days=1), today),
         "1m": (today - timedelta(days=30), today),
