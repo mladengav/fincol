@@ -15,26 +15,22 @@ from domain.iticker_snapshot import ITickerSnapshot
 class TickerSnapshot:
     """Live bundle built by :meth:`YahooFinance.load_ticker` and follow-up loaders; implements :class:`ITickerSnapshot`."""
 
+    snapshotDate: date
     symbol: str
-    history_start: date
-    end: date
+    sectorKey: str
+    industryKey: str
+    exDividendDateUtc: date
     ticker: yf.Ticker = field(repr=False)
     hist: pd.DataFrame = field(default_factory=pd.DataFrame)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
 
-    def with_dividends(self) -> ITickerSnapshot:
+    def with_dividends(self) -> TickerSnapshot:
         """Populate ``TickerSnapshot.divs`` from the bound ticker (ex-dividend series)."""
         self.divs = self.ticker.dividends
         return self
 
-    def with_history(self) -> ITickerSnapshot:
-        """Populate ``TickerSnapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""
-        self.hist = self.ticker.history(
-            start=self.history_start.isoformat(),
-            end=(self.end + timedelta(days=1)).isoformat(),
-            interval="1d",
-            auto_adjust=False,
-        )
+    def with_history(self) -> TickerSnapshot:
+        """Load price history when implemented; until then ``hist`` stays empty."""
         return self
 
 
@@ -44,11 +40,12 @@ class YahooFinance:
     def load_ticker(self, symbol: str) -> TickerSnapshot:
         """Create a yfinance :class:`yf.Ticker` and date window; ``hist``/``divs`` are empty until loaded."""
         end = datetime.now(UTC).date() - timedelta(days=1)  # end = yesterday
-        history_start = end - timedelta(days=365)
         return TickerSnapshot(
+            snapshotDate=end,
             symbol=symbol,
-            history_start=history_start,
-            end=end,
+            sectorKey="",
+            industryKey="",
+            exDividendDateUtc=end,
             ticker=yf.Ticker(symbol),
         )
 
@@ -57,6 +54,4 @@ class YahooFinance:
         return self.load_ticker(symbol).with_dividends()
 
     def load_tickers(self, symbol: str) -> yf.Tickers:
-        end = datetime.now(UTC).date() - timedelta(days=1)  # end = yesterday
-        history_start = end - timedelta(days=365)
         return yf.Tickers("TD.TO BNS.TO")
