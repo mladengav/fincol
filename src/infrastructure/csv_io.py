@@ -1,14 +1,8 @@
-"""CSV IO for fincol input files.
-
-Defines :class:`CsvSymbolLoader`, a concrete :class:`~domain.fincol_io.ISymbolLoader`
-backed by a CSV file whose header includes at least ``symbol`` and
-``quantity`` columns.
-"""
+"""CSV-backed cache I/O for fincol (:class:`CsvFincolIo` and helpers)."""
 
 from __future__ import annotations
 
 import csv
-import os
 from collections.abc import Mapping
 from dataclasses import fields
 from datetime import UTC, date, datetime
@@ -17,65 +11,13 @@ from typing import Any, cast, get_type_hints
 
 import pandas as pd
 import yfinance as yf
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient
-from dotenv import load_dotenv
 
-from domain.fincol_io import IFincolIo, ISymbolLoader
+from domain.fincol_io import IFincolIo
 from domain.iticker_snapshot import ITickerSnapshot
 from infrastructure.yfinance_client import TickerSnapshot
 
 # Repo / install layout root (parent of ``infrastructure/``): default cache and ``.env`` live here.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-
-class CsvSymbolLoader(ISymbolLoader):
-    """:class:`~domain.fincol_io.ISymbolLoader` backed by a CSV file with ``symbol`` and ``quantity`` columns at a fixed path."""
-
-    def __init__(self, path: Path) -> None:
-        self._path = path
-
-    @property
-    def path(self) -> Path:
-        return self._path
-
-    def __repr__(self) -> str:
-        return f"CsvSymbolLoader({self._path!s})"
-
-    def load_symbols(self) -> list[str]:
-        """Load ticker symbols from the configured CSV file; the header must include a ``symbol`` column."""
-        with self._path.open("r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            if reader.fieldnames is None or "symbol" not in reader.fieldnames:
-                raise ValueError("CSV must have a 'symbol' column")
-            symbols: list[str] = []
-            for row in reader:
-                sym = row.get("symbol")
-                if sym is None or sym == "":
-                    continue
-                symbols.append(str(sym))
-        return symbols
-
-    def load_symbols_with_quantities(self) -> list[tuple[str, float]]:
-        """Load ``(symbol, quantity)`` from the configured CSV file; the header must include both columns."""
-        with self._path.open("r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            if reader.fieldnames is None or "symbol" not in reader.fieldnames:
-                raise ValueError("CSV must have a 'symbol' column")
-            if "quantity" not in reader.fieldnames:
-                raise ValueError("CSV must have a 'quantity' column")
-            rows: list[tuple[str, float]] = []
-            for row in reader:
-                sym = row.get("symbol")
-                if sym is None or sym == "":
-                    continue
-                q = row.get("quantity")
-                if q is None or q == "":
-                    raise ValueError(
-                        f"Row with 'symbol' must include 'quantity': {row!r}"
-                    )
-                rows.append((str(sym), float(q)))
-        return rows
 
 
 def _parse_date_cell(raw: str) -> date:
@@ -357,53 +299,3 @@ class CsvFincolIo(IFincolIo):
         self.write_dividend_history(combined)
 
         return rows_added
-
-
-class AzBlobCsvFincolIo(CsvFincolIo):
-    """CsvFincolIo backed by Azure Blob Storage with a local cache folder mirror."""
-
-    _CONTAINER_NAME = "csvcache"
-
-    def __init__(self, folder: Path | None = None) -> None:
-        super().__init__(folder=folder)
-        self._folder.mkdir(parents=True, exist_ok=True)
-
-        load_dotenv(_PROJECT_ROOT / ".env")
-        storage_url = os.environ["AZURE_STORAGE_BLOB_URL"]
-        credential = DefaultAzureCredential()
-        self._container_client = BlobServiceClient(
-            account_url=storage_url,
-            credential=credential,
-        ).get_container_client(self._CONTAINER_NAME)
-
-        self._sync_from_azure()
-
-    def _sync_from_azure(self) -> None:
-        for blob in self._container_client.list_blobs():
-            target = self._folder / blob.name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with target.open("wb") as f:
-                download_stream = self._container_client.download_blob(blob.name)
-                f.write(download_stream.readall())
-
-    def _sync_to_azure(self) -> None:
-        for path in self._folder.rglob("*"):
-            if not path.is_file():
-                continue
-            blob_name = str(path.relative_to(self._folder)).replace("\\", "/")
-            with path.open("rb") as data:
-                self._container_client.upload_blob(
-                    name=blob_name, data=data, overwrite=True
-                )
-
-    def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None:
-        super().write_ttm_income(ttm_by_ticker)
-        self._sync_to_azure()
-
-    def write_dividend_history(self, body: pd.DataFrame) -> None:
-        super().write_dividend_history(body)
-        self._sync_to_azure()
-
-    def write_tickers_to_cache(self, snapshots: list[ITickerSnapshot]) -> None:
-        super().write_tickers_to_cache(snapshots)
-        self._sync_to_azure()
