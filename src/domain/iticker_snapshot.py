@@ -12,12 +12,16 @@ import pandas as pd
 class ITickerSnapshot(Protocol):
     """Bundle of symbol, date window, price history, and dividend series from Yahoo."""
 
+    snapshotDate: date
     symbol: str
-    history_start: date
-    end: date
+    sectorKey: str
+    industryKey: str
+    exDividendDateUtc: date
     hist: pd.DataFrame
     divs: pd.Series
 
     def with_dividends(self) -> ITickerSnapshot: ...
 
-    def with_history(self) -> ITickerSnapshot: ...
+    def with_info(self) -> ITickerSnapshot: ...
+
+    def get_history(self, history_start: date, end: date) -> ITickerSnapshot: ...

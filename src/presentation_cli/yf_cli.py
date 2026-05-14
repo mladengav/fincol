@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timedelta
 
 from application import fincol_math as fm
 from infrastructure.yfinance_client import YahooFinance
@@ -9,10 +10,10 @@ from infrastructure.yfinance_client import YahooFinance
 
 def run_fetch_and_compute(symbol: str) -> dict[str, dict[str, object]]:
     """Load dividends/history and compute 1d, 1m, and YTD returns."""
-    snapshot = YahooFinance().load_ticker(symbol).with_dividends().with_history()
-    if snapshot.hist.empty:
-        raise RuntimeError("No price data returned for " + snapshot.symbol)
-    return fm.compute_return_periods(snapshot)
+    snapshot = YahooFinance().load_ticker(symbol).with_dividends()
+
+    today = datetime.now().date()
+    return fm.compute_return_periods(snapshot, history_start=today- timedelta(days=365))
 
 
 def print_return_report(results: dict[str, dict[str, object]]) -> None:
