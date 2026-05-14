@@ -4,6 +4,7 @@ Defines :class:`CsvSymbolLoader`, a concrete :class:`~domain.fincol_io.ISymbolLo
 backed by a CSV file whose header includes at least ``symbol`` and
 ``quantity`` columns.
 """
+
 from __future__ import annotations
 
 import csv
@@ -104,7 +105,9 @@ class CsvFincolIo(IFincolIo):
                 if not ticker:
                     raise ValueError(f"{path}:{i}: empty ticker")
                 try:
-                    result[str(ticker)] = float(value) if value not in (None, "") else 0.0
+                    result[str(ticker)] = (
+                        float(value) if value not in (None, "") else 0.0
+                    )
                 except (TypeError, ValueError) as e:
                     raise ValueError(
                         f"{path}:{i}: bad ttm_dividend value {value!r} for {ticker!r}"
@@ -146,8 +149,12 @@ class CsvFincolIo(IFincolIo):
         existing = self.read_dividend_history()
 
         combined = pd.concat([existing, new_dividends], ignore_index=True)
-        combined = combined.drop_duplicates(subset=["ticker", "date", "amount"], keep="first")
-        combined = combined.sort_values(["ticker", "date"], kind="mergesort").reset_index(drop=True)
+        combined = combined.drop_duplicates(
+            subset=["ticker", "date", "amount"], keep="first"
+        )
+        combined = combined.sort_values(
+            ["ticker", "date"], kind="mergesort"
+        ).reset_index(drop=True)
 
         rows_added = len(combined) - len(existing)
 
@@ -190,9 +197,8 @@ class AzBlobCsvFincolIo(CsvFincolIo):
             blob_name = str(path.relative_to(self._folder)).replace("\\", "/")
             with path.open("rb") as data:
                 self._container_client.upload_blob(
-                    name=blob_name,
-                    data=data,
-                    overwrite=True)
+                    name=blob_name, data=data, overwrite=True
+                )
 
     def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None:
         super().write_ttm_income(ttm_by_ticker)

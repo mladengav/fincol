@@ -5,6 +5,7 @@ This utility is a thin presentation layer over data already cached by
 :mod:`fincol`. It does not fetch new market data; it only reads the cache,
 aggregates positions, and displays TTM dividend income.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,7 +27,10 @@ def load_symbols_with_quantities(loader_io: ISymbolLoader) -> list[tuple[str, fl
     """
     result = loader_io.load_symbols_with_quantities()
     if not result:
-        print(f"Warning: no symbol/quantity entries returned from {loader_io!r}", file=sys.stderr)
+        print(
+            f"Warning: no symbol/quantity entries returned from {loader_io!r}",
+            file=sys.stderr,
+        )
         return []
     rows: list[tuple[str, float]] = []
     for i, item in enumerate(result):
@@ -56,7 +60,9 @@ def load_symbols_with_quantities(loader_io: ISymbolLoader) -> list[tuple[str, fl
     return rows
 
 
-def run_display_positions_dividend(loader_io: ISymbolLoader, fincol_io: IFincolIo) -> None:
+def run_display_positions_dividend(
+    loader_io: ISymbolLoader, fincol_io: IFincolIo
+) -> None:
     """Load positions via ``loader_io``; read TTM dividends via ``fincol_io`` and display TTM income for positions"""
     positions = load_symbols_with_quantities(loader_io)
     if not positions:
@@ -68,11 +74,15 @@ def run_display_positions_dividend(loader_io: ISymbolLoader, fincol_io: IFincolI
     for sym, qty in aggregated:
         ttm_by_ticker[sym] = per_share.get(sym, 0.0) * qty
 
-    print(f"Loaded {len(positions)} position(s) from {loader_io!r} ({len(aggregated)} ticker(s) after aggregating quantities)")
+    print(
+        f"Loaded {len(positions)} position(s) from {loader_io!r} ({len(aggregated)} ticker(s) after aggregating quantities)"
+    )
     for sym, qty in aggregated:
         print(f"  {sym}: {qty} shares")
     for sym, _ in aggregated:
-        print(f"  TTM dividend income (last {fm.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}")
+        print(
+            f"  TTM dividend income (last {fm.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}"
+        )
 
     total_income = sum(ttm_by_ticker.values())
     print(f"Total TTM dividend income (all tickers in file): {total_income:.4f}")
@@ -129,8 +139,7 @@ def main() -> int:
     if not path.is_file():
         raise SystemExit(f"Input file not found: {path}")
     loader_io: ISymbolLoader = (
-        CsvSymbolLoader(path) if args.csv_file is not None
-        else JsonSymbolLoader(path)
+        CsvSymbolLoader(path) if args.csv_file is not None else JsonSymbolLoader(path)
     )
     fincol_io: IFincolIo = CsvFincolIo()
     run_display_positions_dividend(loader_io, fincol_io)

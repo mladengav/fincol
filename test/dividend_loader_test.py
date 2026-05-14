@@ -5,6 +5,7 @@ These tests perform a live network call to Yahoo Finance via
 refresh TTM aggregations via :class:`~application.aggregation_updater.AggregationUpdater`,
 and verify cache CSV output against the ``testcache`` dividend fixture for ``BNS.TO``.
 """
+
 from __future__ import annotations
 
 import math
@@ -18,7 +19,9 @@ from application.dividend_loader import DividendLoader
 from infrastructure.csv_io import CsvFincolIo
 from infrastructure.yfinance_client import YahooFinance
 
-DIVIDEND_HISTORY_CSV = Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
+DIVIDEND_HISTORY_CSV = (
+    Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
+)
 
 # CSV amounts are stored to 4 decimal places, so anything closer than that is noise.
 # A small relative tolerance covers historical splits/rounding drift in the live feed.
@@ -33,9 +36,9 @@ def expected_dividends_bns_to() -> pd.DataFrame:
     """Return the ``(date, amount)`` rows for BNS.TO from the cached CSV fixture."""
     df = pd.read_csv(DIVIDEND_HISTORY_CSV)
     rows = df.loc[df["ticker"] == BNS_TO_TICKER, ["date", "amount"]].copy()
-    assert not rows.empty, (
-        f"Test fixture is empty for {BNS_TO_TICKER}: no rows in {DIVIDEND_HISTORY_CSV}"
-    )
+    assert (
+        not rows.empty
+    ), f"Test fixture is empty for {BNS_TO_TICKER}: no rows in {DIVIDEND_HISTORY_CSV}"
     rows["date"] = rows["date"].astype(str)
     rows["amount"] = rows["amount"].astype(float)
     return rows.sort_values("date").reset_index(drop=True)
@@ -51,7 +54,7 @@ def bns_load_cache_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
     # TODO:  Separate into AggregationUpdater test
     AggregationUpdater().update_aggregations(fincol_io)
-    
+
     return tmp_folder
 
 
@@ -64,7 +67,9 @@ def test_run_load_dividend_history_bns_to_output_contains_all_fixture_rows(
     Extra (likely more recent) rows from the live feed are allowed.
     """
     out_path = bns_load_cache_dir / "dividend_history.csv"
-    assert out_path.is_file(), f"Expected {out_path} to exist after dividend history update"
+    assert (
+        out_path.is_file()
+    ), f"Expected {out_path} to exist after dividend history update"
 
     written = pd.read_csv(out_path)
     bns = written.loc[written["ticker"] == BNS_TO_TICKER, ["date", "amount"]].copy()
@@ -86,6 +91,7 @@ def test_run_load_dividend_history_bns_to_output_contains_all_fixture_rows(
                 f"in {out_path.name} (fixture: {DIVIDEND_HISTORY_CSV.name})"
             )
 
+
 # TODO:  Separate into AggregationUpdater test
 def test_run_load_dividend_history_bns_to_ttm_income_non_negative(
     bns_load_cache_dir: Path,
@@ -102,4 +108,6 @@ def test_run_load_dividend_history_bns_to_ttm_income_non_negative(
     assert not row.empty, f"No TTM row for {BNS_TO_TICKER} in {ttm_path}"
 
     bns_to_ttm_div = float(row["ttm_dividend"].iloc[0])
-    assert bns_to_ttm_div >= 0.0, f"Expected non-negative ttm_dividend for {BNS_TO_TICKER}, got {bns_to_ttm_div}"
+    assert (
+        bns_to_ttm_div >= 0.0
+    ), f"Expected non-negative ttm_dividend for {BNS_TO_TICKER}, got {bns_to_ttm_div}"

@@ -1,4 +1,5 @@
 """Protocols for symbol inputs and fincol cache persistence."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping

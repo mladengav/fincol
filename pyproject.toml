@@ -19,6 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "black>=25.11",
     "pytest>=8.0",
 ]
 
@@ -32,6 +33,9 @@ package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.black]
+target-version = ["py314"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]

@@ -1,4 +1,5 @@
 """Direct yfinance access: progressive load (ticker -> dividends -> history as needed)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -50,3 +51,8 @@ class YahooFinance:
             end=end,
             ticker=yf.Ticker(symbol),
         )
+
+    def load_tickers(self, symbol: str) -> yf.Tickers:
+        end = datetime.now(UTC).date() - timedelta(days=1)  # end = yesterday
+        history_start = end - timedelta(days=365)
+        return yf.Tickers("TD.TO BNS.TO")

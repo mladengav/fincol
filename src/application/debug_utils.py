@@ -1,4 +1,5 @@
 """Debug-only utilities for verbose CLI output."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -16,7 +17,9 @@ def debug_print_divs_structure(divs: pd.Series | pd.DataFrame) -> None:
         print(f"[debug]   columns ({len(cols)}): {cols}")
         row0 = divs.iloc[0]
         for col in cols:
-            print(f"[debug]   first row [{col!r}]: {row0[col]!r}  (column dtype: {divs[col].dtype})")
+            print(
+                f"[debug]   first row [{col!r}]: {row0[col]!r}  (column dtype: {divs[col].dtype})"
+            )
         return
     # Series (typical for yfinance ``Ticker.dividends``)
     print(f"[debug]   Series.name: {divs.name!r}")

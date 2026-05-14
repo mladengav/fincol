@@ -3,6 +3,7 @@
 These tests perform a live network call to Yahoo Finance for the ticker(s) under test
 and verify that the expected dividend data structures are populated correctly.
 """
+
 from __future__ import annotations
 
 import math
@@ -14,7 +15,9 @@ import pytest
 from domain.iticker_snapshot import ITickerSnapshot
 from infrastructure.yfinance_client import YahooFinance
 
-DIVIDEND_HISTORY_CSV = Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
+DIVIDEND_HISTORY_CSV = (
+    Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
+)
 
 # CSV amounts are stored to 4 decimal places, so anything closer than that is noise.
 # A small relative tolerance covers historical splits/rounding drift in the live feed.
@@ -35,9 +38,9 @@ def expected_dividends_td_to() -> pd.DataFrame:
     """Return the ``(date, amount)`` rows for TD.TO from the cached CSV fixture."""
     df = pd.read_csv(DIVIDEND_HISTORY_CSV)
     rows = df.loc[df["ticker"] == TD_TO_TICKER, ["date", "amount"]].copy()
-    assert not rows.empty, (
-        f"Test fixture is empty for {TD_TO_TICKER}: no rows in {DIVIDEND_HISTORY_CSV}"
-    )
+    assert (
+        not rows.empty
+    ), f"Test fixture is empty for {TD_TO_TICKER}: no rows in {DIVIDEND_HISTORY_CSV}"
     rows["date"] = rows["date"].astype(str)
     rows["amount"] = rows["amount"].astype(float)
     return rows.sort_values("date").reset_index(drop=True)
@@ -66,9 +69,9 @@ def test_snapshot_td_to_dividends_contain_all_cached_entries(
     Extra (likely more recent) dividends in ``snapshot_td_to.divs`` are allowed.
     """
     divs = snapshot_td_to.divs
-    assert isinstance(divs, pd.Series), (
-        f"Expected snapshot_td_to.divs to be a pandas.Series, got {type(divs).__name__}"
-    )
+    assert isinstance(
+        divs, pd.Series
+    ), f"Expected snapshot_td_to.divs to be a pandas.Series, got {type(divs).__name__}"
     assert not divs.empty, f"yfinance returned no dividends for {TD_TO_TICKER}"
 
     live_by_date: dict[str, float] = {
@@ -87,7 +90,11 @@ def test_snapshot_td_to_dividends_contain_all_cached_entries(
     if missing:
         details = "\n".join(
             f"  - {d}: expected {amt:.4f}, "
-            + ("not present in snapshot_td_to.divs" if live is None else f"got {live:.4f}")
+            + (
+                "not present in snapshot_td_to.divs"
+                if live is None
+                else f"got {live:.4f}"
+            )
             for d, amt, live in missing
         )
         pytest.fail(

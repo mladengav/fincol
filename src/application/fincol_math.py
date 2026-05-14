@@ -2,6 +2,7 @@
 Math primitives: period-return computation, TTM dividend computation, and
 dividend/position transforms.
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -41,8 +42,12 @@ def compute_return_periods(snapshot: ITickerSnapshot) -> dict[str, dict[str, obj
         end_row = _get_price_on_or_before(hist, edate)
         div_sum = divs[(divs.index.date >= sdate) & (divs.index.date <= edate)].sum()
         price_return = (end_row["Close"] - start_row["Close"]) / start_row["Close"]
-        total_return = (end_row["Close"] - start_row["Close"] + div_sum) / start_row["Close"]
-        adj_return = (end_row["Adj Close"] - start_row["Adj Close"]) / start_row["Adj Close"]
+        total_return = (end_row["Close"] - start_row["Close"] + div_sum) / start_row[
+            "Close"
+        ]
+        adj_return = (end_row["Adj Close"] - start_row["Adj Close"]) / start_row[
+            "Adj Close"
+        ]
         results[name] = {
             "start_date": start_row.name.date(),
             "end_date": end_row.name.date(),
@@ -61,11 +66,17 @@ def ttm_per_share_for_ticker(ticker: str, div_hist: pd.DataFrame) -> float:
     sub = div_hist[div_hist["ticker"] == ticker]
     if sub.empty:
         return 0.0
-    s = sub.assign(_d=pd.to_datetime(sub["date"])).sort_values("_d", ascending=False).head(TTM_NUM_PAYMENTS)
+    s = (
+        sub.assign(_d=pd.to_datetime(sub["date"]))
+        .sort_values("_d", ascending=False)
+        .head(TTM_NUM_PAYMENTS)
+    )
     return float(s["amount"].sum())
 
 
-def aggregate_positions_by_ticker(positions: list[tuple[str, float]]) -> list[tuple[str, float]]:
+def aggregate_positions_by_ticker(
+    positions: list[tuple[str, float]],
+) -> list[tuple[str, float]]:
     acc: dict[str, float] = {}
     for sym, q in positions:
         acc[sym] = acc.get(sym, 0.0) + q
