@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Protocol, runtime_checkable
 
 import pandas as pd
@@ -75,6 +75,11 @@ class DividendLoader:
         for ex_date in sorted(by_ex_date):
             tickers = sorted(by_ex_date[ex_date])
             print(f"Ex-dividend date {ex_date}: {tickers}")
+
+            if (ex_date > datetime.now().date() - timedelta(days=1)):
+                print(f"Ex-dividend date {ex_date} must be at least 1 day in the past, skipping")
+                continue
+
             tickers_to_update = self._filter_for_new_dividend_events(tickers, ex_date)
             known_tickers_to_update.extend(tickers_to_update)
 
@@ -86,11 +91,11 @@ class DividendLoader:
             print("No tickers to update")
             return
 
-        new_tickers = []
-        for unknown_ticker in unknown_tickers:
-            new_tickers.append(self.yahoo_finance.load_ticker(unknown_ticker, withInfo=True))
+        updated_snapshots = []
+        for unknown_ticker in tickers_to_update:
+            updated_snapshots.append(self.yahoo_finance.load_ticker(unknown_ticker, withInfo=True))
 
-        self.fincol_io.write_tickers_to_cache(new_tickers)
+        self.fincol_io.write_tickers_to_cache(updated_snapshots)
 
         frames: list[pd.DataFrame] = []
         for symbol in tickers_to_update:
@@ -98,8 +103,6 @@ class DividendLoader:
             frames.append(
                 self._dividends_to_history_frame(snapshot.symbol, snapshot.divs)
             )
-        
-
         
         new_df = pd.concat(frames, ignore_index=True)
         x_retrieved = len(new_df)
