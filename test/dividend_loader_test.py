@@ -19,7 +19,6 @@ import pytest
 
 from application.aggregation_updater import AggregationUpdater
 from application.dividend_loader import DividendLoader
-from application.iyahoo_finance import IYahooFinance
 from domain.iticker_snapshot import ITickerSnapshot
 from infrastructure.csv_io import CsvFincolIo
 
@@ -50,9 +49,11 @@ def _bns_dividends_series_from_csv(path: Path = BNS_DIVS_CSV) -> pd.Series:
 class FakeTickerSnapshot:
     """Minimal :class:`~domain.iticker_snapshot.ITickerSnapshot` for tests (no ``yfinance`` ticker)."""
 
+    snapshotDate: date
     symbol: str
-    history_start: date
-    end: date
+    sectorKey: str
+    industryKey: str
+    exDividendDateUtc: date
     hist: pd.DataFrame = field(default_factory=pd.DataFrame)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
 
@@ -86,9 +87,11 @@ class CsvBackedYahooFinance:
         withInfo: bool = False,
     ) -> FakeTickerSnapshot:
         snap = FakeTickerSnapshot(
+            snapshotDate=datetime.now().date(),
             symbol=symbol,
-            history_start=self._history_start,
-            end=self._end,
+            sectorKey="",
+            industryKey="",
+            exDividendDateUtc=date(1970, 1, 1)
         )
         if withDividends:
             snap.divs = self._template_divs.copy()
