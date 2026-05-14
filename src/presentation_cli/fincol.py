@@ -2,7 +2,8 @@
 CLI entry: Yahoo dividend display and cache updates for one or many tickers.
 
 Wiring: :mod:`infrastructure.yfinance_client` (live data) → :mod:`application.dividend_loader` /
-:mod:`application.aggregation_updater` → :mod:`infrastructure.csv_io` (cache I/O) and argparse.
+:mod:`application.aggregation_updater` → :mod:`infrastructure.csv_io` /
+:mod:`infrastructure.csv_azblob_io` (cache I/O) and argparse.
 """
 
 from __future__ import annotations
@@ -13,7 +14,8 @@ from pathlib import Path
 from application.aggregation_updater import AggregationUpdater, IAggregationUpdater
 from application.dividend_loader import DividendLoader, IDividendLoader
 from domain.fincol_io import IFincolIo, ISymbolLoader
-from infrastructure.csv_io import AzBlobCsvFincolIo, CsvFincolIo, CsvSymbolLoader
+from infrastructure.csv_azblob_io import AzBlobCsvFincolIo
+from infrastructure.csv_io import CsvFincolIo, CsvSymbolLoader
 from infrastructure.json_io import JsonSymbolLoader
 from infrastructure.yfinance_client import YahooFinance
 
