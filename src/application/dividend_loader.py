@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+from datetime import date
 from typing import Protocol, runtime_checkable
 
 import pandas as pd
@@ -34,7 +36,7 @@ class DividendLoader:
         self, symbol: str, *, verbose: bool = False
     ) -> ITickerSnapshot:
         """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""
-        snapshot = self.yahoo_finance.load_ticker_with_dividends(symbol)
+        snapshot = self.yahoo_finance.load_ticker(symbol, withDividends=True)
         print(f"Dividends (ex-dates) for {snapshot.symbol}")
         if verbose:
             debug_print_divs_structure(snapshot.divs)
@@ -55,14 +57,50 @@ class DividendLoader:
         unique = list(dict.fromkeys(symbols))
         if not unique:
             return
+        
+        print(f"Updating dividend history for tickers: {unique}")
+
+        known_tickers = self.fincol_io.read_cached_tickers(unique)
+        print(f"Known tickers: {[t.symbol for t in known_tickers]}")
+
+        known_symbols = {t.symbol for t in known_tickers}
+
+        unknown_tickers = [t for t in unique if t not in known_symbols]
+        print(f"Unknown tickers: {unknown_tickers}")
+
+        known_tickers_to_update = []
+        by_ex_date: defaultdict[date, list[str]] = defaultdict(list)
+        for kt in known_tickers:
+            by_ex_date[kt.exDividendDateUtc].append(kt.symbol)
+        for ex_date in sorted(by_ex_date):
+            tickers = sorted(by_ex_date[ex_date])
+            print(f"Ex-dividend date {ex_date}: {tickers}")
+            tickers_to_update = self._filter_for_new_dividend_events(tickers, ex_date)
+            known_tickers_to_update.extend(tickers_to_update)
+
+        print(f"Known tickers to update: {known_tickers_to_update}")
+        tickers_to_update = list(set(known_tickers_to_update + unknown_tickers))
+        print(f"Tickers to update: {tickers_to_update}")
+
+        if not tickers_to_update:
+            print("No tickers to update")
+            return
+
+        new_tickers = []
+        for unknown_ticker in unknown_tickers:
+            new_tickers.append(self.yahoo_finance.load_ticker(unknown_ticker, withInfo=True))
+
+        self.fincol_io.write_tickers_to_cache(new_tickers)
 
         frames: list[pd.DataFrame] = []
-        for symbol in unique:
+        for symbol in tickers_to_update:
             snapshot = self.retrieve_ticker_dividends(symbol)
             frames.append(
                 self._dividends_to_history_frame(snapshot.symbol, snapshot.divs)
             )
+        
 
+        
         new_df = pd.concat(frames, ignore_index=True)
         x_retrieved = len(new_df)
 
@@ -70,11 +108,18 @@ class DividendLoader:
 
         z_filtered = x_retrieved - rows_added
 
-        ticker_note = unique[0] if len(unique) == 1 else f"{len(unique)} ticker(s)"
+        ticker_note = tickers_to_update[0] if len(tickers_to_update) == 1 else f"{len(tickers_to_update)} ticker(s)"
         print(
             f"{x_retrieved} rows retrieved ({ticker_note}), "
             f"{rows_added} rows added, {z_filtered} duplicate rows filtered out"
         )
+
+    def _filter_for_new_dividend_events(self, tickers: list[str], ex_date: date) -> list[str]:
+        sums_after = self.yahoo_finance.dividend_sum_after_ex_date(tickers, ex_date)
+        tickers_to_update = [s for s in tickers if sums_after.get(s, 0.0) > 0.0]
+        print(f"  Dividend sums after {ex_date}: {sums_after}")
+        print(f"  Tickers with sum > 0: {tickers_to_update}")
+        return tickers_to_update
 
     def _dividends_to_history_frame(self, symbol: str, divs: pd.Series) -> pd.DataFrame:
         """One row per dividend: ticker, calendar date (YYYY-MM-DD), amount (from ``Date`` / ``Dividends`` columns)."""

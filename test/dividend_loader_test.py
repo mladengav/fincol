@@ -11,7 +11,7 @@ and verifies cache CSV output against the ``testcache`` dividend fixture for
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -62,6 +62,9 @@ class FakeTickerSnapshot:
     def with_history(self) -> ITickerSnapshot:
         return self
 
+    def with_info(self) -> ITickerSnapshot:
+        return self
+
 
 class CsvBackedYahooFinance:
     """Test :class:`~application.iyahoo_finance.IYahooFinance` using static ``bns_divs.csv`` dividends."""
@@ -76,20 +79,30 @@ class CsvBackedYahooFinance:
             self._history_start = date(2000, 1, 1)
             self._end = date.today()
 
-    def load_ticker(self, symbol: str) -> FakeTickerSnapshot:
-        return FakeTickerSnapshot(
+    def load_ticker(
+        self,
+        symbol: str,
+        withDividends: bool = False,
+        withInfo: bool = False,
+    ) -> FakeTickerSnapshot:
+        snap = FakeTickerSnapshot(
             symbol=symbol,
             history_start=self._history_start,
             end=self._end,
         )
+        if withDividends:
+            snap.divs = self._template_divs.copy()
+        if withInfo:
+            snap.with_info()
+        return snap
 
-    def load_ticker_with_dividends(self, symbol: str) -> FakeTickerSnapshot:
-        return FakeTickerSnapshot(
-            symbol=symbol,
-            history_start=self._history_start,
-            end=self._end,
-            divs=self._template_divs.copy(),
-        )
+    def dividend_sum_after_ex_date(self, symbols: list[str], ex_date: date) -> dict[str, float]:
+        """Per-symbol sums from ``bns_divs.csv`` (fixture amounts apply only to ``BNS.TO``)."""
+        window_start = ex_date + timedelta(days=1)
+        ts = pd.Timestamp(datetime.combine(window_start, datetime.min.time()), tz="UTC")
+        tail = self._template_divs[self._template_divs.index >= ts]
+        div_sum = float(tail.fillna(0).sum())
+        return {sym: div_sum if sym == BNS_TO_TICKER else 0.0 for sym in symbols}
 
 
 @pytest.fixture(scope="module")

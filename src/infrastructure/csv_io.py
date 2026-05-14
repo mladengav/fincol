@@ -113,6 +113,50 @@ def _cell_for_ticker_snapshot_field(row: Mapping[str, str | None], field_name: s
     return ""
 
 
+_TICKER_SNAPSHOT_CSV_SKIP = frozenset({"ticker", "hist", "divs"})
+
+
+def _default_tickers_csv_fieldnames() -> list[str]:
+    """Header column order for a new ``tickers.csv`` (mirrors :class:`TickerSnapshot` minus skipped fields)."""
+    names: list[str] = []
+    for fld in fields(TickerSnapshot):
+        if fld.name in _TICKER_SNAPSHOT_CSV_SKIP:
+            continue
+        if fld.name == "exDividendDateUtc":
+            names.append("exDividendDate")
+        else:
+            names.append(fld.name)
+    return names
+
+
+def _attr_for_tickers_csv_column(column: str) -> str | None:
+    """Map a CSV header to the :class:`~domain.iticker_snapshot.ITickerSnapshot` attribute, if any."""
+    if column == "exDividendDate":
+        return "exDividendDateUtc"
+    if column in ("snapshotDate", "symbol", "sectorKey", "industryKey"):
+        return column
+    return None
+
+
+def _format_value_for_tickers_csv(value: Any) -> str:
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)
+
+
+def _tickers_csv_row_from_snapshot(
+    snap: ITickerSnapshot, fieldnames: list[str]
+) -> dict[str, str]:
+    return {
+        col: (
+            _format_value_for_tickers_csv(getattr(snap, attr))
+            if (attr := _attr_for_tickers_csv_column(col)) is not None
+            else ""
+        )
+        for col in fieldnames
+    }
+
+
 class CsvFincolIo(IFincolIo):
     """IFincolIo backed by CSV files inside a cache folder."""
 
@@ -134,7 +178,6 @@ class CsvFincolIo(IFincolIo):
 
         wanted = set(ticker_symbols)
         hints = get_type_hints(TickerSnapshot)
-        skip = frozenset({"ticker", "hist", "divs"})
         out: list[ITickerSnapshot] = []
 
         with path.open("r", encoding="utf-8", newline="") as f:
@@ -147,7 +190,7 @@ class CsvFincolIo(IFincolIo):
                     continue
                 kwargs: dict[str, Any] = {}
                 for fld in fields(TickerSnapshot):
-                    if fld.name in skip:
+                    if fld.name in _TICKER_SNAPSHOT_CSV_SKIP:
                         continue
                     raw = _cell_for_ticker_snapshot_field(row, fld.name)
                     typ = hints[fld.name]
@@ -162,6 +205,79 @@ class CsvFincolIo(IFincolIo):
                 kwargs["ticker"] = yf.Ticker(str(sym))
                 out.append(TickerSnapshot(**kwargs))
         return out
+
+    def write_tickers_to_cache(self, snapshots: list[ITickerSnapshot]) -> None:
+        """Merge ``snapshots`` into ``tickers.csv``.
+
+        Rows whose ``symbol`` matches an incoming snapshot are replaced (last snapshot
+        wins for duplicate symbols in ``snapshots``). Other rows are kept in file
+        order. Symbols not yet present are appended after existing rows.
+        """
+        if not snapshots:
+            return
+
+        path = self._folder / self._TICKERS_CSV
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        incoming_by_symbol: dict[str, ITickerSnapshot] = {}
+        incoming_order: list[str] = []
+        for snap in snapshots:
+            sym = snap.symbol
+            if sym not in incoming_by_symbol:
+                incoming_order.append(sym)
+            incoming_by_symbol[sym] = snap
+
+        if path.exists() and path.stat().st_size > 0:
+            with path.open("r", encoding="utf-8", newline="") as f:
+                reader = csv.DictReader(f)
+                fieldnames = (
+                    list(reader.fieldnames)
+                    if reader.fieldnames
+                    else _default_tickers_csv_fieldnames()
+                )
+                if "symbol" not in fieldnames:
+                    raise ValueError(f"{path}: CSV must have a 'symbol' column")
+                existing_rows = list(reader)
+
+            replaced_emitted: set[str] = set()
+            out_rows: list[dict[str, str]] = []
+            for row in existing_rows:
+                sym = (row.get("symbol") or "").strip()
+                if sym in incoming_by_symbol:
+                    if sym not in replaced_emitted:
+                        out_rows.append(
+                            _tickers_csv_row_from_snapshot(
+                                incoming_by_symbol[sym], fieldnames
+                            )
+                        )
+                        replaced_emitted.add(sym)
+                    continue
+                out_rows.append({k: (row.get(k) or "") for k in fieldnames})
+
+            for sym in incoming_order:
+                if sym not in replaced_emitted:
+                    out_rows.append(
+                        _tickers_csv_row_from_snapshot(
+                            incoming_by_symbol[sym], fieldnames
+                        )
+                    )
+        else:
+            fieldnames = _default_tickers_csv_fieldnames()
+            out_rows = [
+                _tickers_csv_row_from_snapshot(incoming_by_symbol[sym], fieldnames)
+                for sym in incoming_order
+            ]
+
+        with path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=fieldnames,
+                extrasaction="ignore",
+                quoting=csv.QUOTE_MINIMAL,
+            )
+            writer.writeheader()
+            for row in out_rows:
+                writer.writerow(row)
 
     def read_ttm_income(self) -> dict[str, float]:
         path = self._folder / self._TTM_INCOME_CSV
@@ -286,4 +402,8 @@ class AzBlobCsvFincolIo(CsvFincolIo):
 
     def write_dividend_history(self, body: pd.DataFrame) -> None:
         super().write_dividend_history(body)
+        self._sync_to_azure()
+
+    def write_tickers_to_cache(self, snapshots: list[ITickerSnapshot]) -> None:
+        super().write_tickers_to_cache(snapshots)
         self._sync_to_azure()
