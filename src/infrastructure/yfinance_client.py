@@ -52,6 +52,10 @@ class YahooFinance:
             ticker=yf.Ticker(symbol),
         )
 
+    def load_ticker_with_dividends(self, symbol: str) -> TickerSnapshot:
+        """Create a yfinance :class:`yf.Ticker` and date window; Dividends are loaded."""
+        return self.load_ticker(symbol).with_dividends()
+
     def load_tickers(self, symbol: str) -> yf.Tickers:
         end = datetime.now(UTC).date() - timedelta(days=1)  # end = yesterday
         history_start = end - timedelta(days=365)

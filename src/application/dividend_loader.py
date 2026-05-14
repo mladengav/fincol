@@ -34,7 +34,7 @@ class DividendLoader:
         self, symbol: str, *, verbose: bool = False
     ) -> ITickerSnapshot:
         """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""
-        snapshot = self.yahoo_finance.load_ticker(symbol).with_dividends()
+        snapshot = self.yahoo_finance.load_ticker_with_dividends(symbol)
         print(f"Dividends (ex-dates) for {snapshot.symbol}")
         if verbose:
             debug_print_divs_structure(snapshot.divs)

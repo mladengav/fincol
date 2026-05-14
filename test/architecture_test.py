@@ -1,44 +1,40 @@
-# TODO:  Disabled because pytestarch expects a subfolder, e.g. "fincol" under the main "src" folder.  Tests can be enabled when/if project is
-#        reorganized according to that structure.
+import re
+from archunitpython import project_files, metrics, assert_passes, project_slices
 
-# import pytest
-# from pytestarch import EvaluableArchitecture, LayeredArchitecture, get_evaluable_architecture, LayerRule
+def test_no_circular_dependencies():
+    rule = project_files("src/").in_folder("src/**").should().have_no_cycles()
+    assert_passes(rule)
 
-# @pytest.fixture(scope="session")
-# def evaluable(pytestconfig: pytest.Config) -> EvaluableArchitecture:
-#     project_root = pytestconfig.rootpath
-#     src_path = project_root / "src"
-#     return get_evaluable_architecture(str(src_path), "")
+def test_no_large_files():
+    rule = metrics("src/").count().lines_of_code().should_be_below(1000)
+    assert_passes(rule)
 
-# @pytest.fixture(scope="session")
-# def layered_architecture() -> LayeredArchitecture:
-#     return (
-#         LayeredArchitecture()
-#         .layer("domain")
-#         .containing_modules(["src.domain"])
-#         .layer("application")
-#         .containing_modules(["src.application"])
-#         .layer("infrastructure")
-#         .containing_modules(["src.infrastructure"])
-#         .layer("presentation_cli")
-#         .containing_modules(["src.presentation_cli"])
-#     )
+def test_adhere_to_diagram():
+    diagram = """
+@startuml
+  component [domain]
+  component [application]
+  component [infrastructure]
+  component [presentation_cli]
+  [application] --> [domain]
+  [infrastructure] --> [application]
+  [infrastructure] --> [domain]
+  [presentation_cli] --> [infrastructure]
+  [presentation_cli] --> [application]
+  [presentation_cli] --> [domain]
+@enduml"""
+
+    rule = (
+        project_slices("src/")
+        .defined_by_regex(re.compile(r"/([^/]+)/[^/]+\.py$"))
+        .should()
+        .adhere_to_diagram(diagram)
+    )
+    assert_passes(rule)
 
 
-# def test_domain_cannot_reference_higher_layers(
-#     evaluable: EvaluableArchitecture, layered_architecture: LayeredArchitecture
-# ) -> None:
-#     """
-#     Domain layer must not reference higher layers.
-#     """
-#     rule = (
-#         LayerRule()
-#         .based_on(layered_architecture)
-#         .layers_that()
-#         .are_named("domain")
-#         .should_not()
-#         .access_layers_that()
-#         .are_named(["application", "infrastructure"])
-#     )
-
-#     rule.assert_applies(evaluable)
+# TODO:  Need to understand what is a reasonable LCOM metric for this project.
+# def test_high_cohesion():
+#     # LCOM metric (lack of cohesion of methods), low = high cohesion
+#     rule = metrics("src/").lcom().lcom96b().should_be_below(0.3)
+#     assert_passes(rule)
