@@ -16,8 +16,7 @@ from domain.fincol_io import IFincolIo
 from domain.iticker_snapshot import ITickerSnapshot
 from infrastructure.yfinance_client import TickerSnapshot
 
-# Repo / install layout root (parent of ``infrastructure/``): default cache and ``.env`` live here.
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+from infrastructure import _PROJECT_ROOT
 
 
 def _parse_date_cell(raw: str) -> date:

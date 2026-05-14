@@ -12,9 +12,9 @@ from azure.storage.blob import BlobServiceClient
 from dotenv import load_dotenv
 
 from domain.iticker_snapshot import ITickerSnapshot
-from infrastructure.csv_io import CsvFincolIo
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+from infrastructure import _PROJECT_ROOT
+from infrastructure.csv_io import CsvFincolIo
 
 
 class AzBlobCsvFincolIo(CsvFincolIo):
