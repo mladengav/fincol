@@ -6,6 +6,8 @@
     "python.testing.pytestEnabled": true,
     "flake8.enabled": true,
     "flake8.importStrategy": "fromEnvironment",
+    "mypy-type-checker.enabled": true,
+    "mypy-type-checker.importStrategy": "fromEnvironment",
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,

@@ -11,6 +11,7 @@ import csv
 import os
 from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 from azure.identity import DefaultAzureCredential
@@ -104,14 +105,16 @@ class CsvFincolIo(IFincolIo):
                 value = row.get("ttm_dividend")
                 if not ticker:
                     raise ValueError(f"{path}:{i}: empty ticker")
-                try:
-                    result[str(ticker)] = (
-                        float(value) if value not in (None, "") else 0.0
-                    )
-                except (TypeError, ValueError) as e:
-                    raise ValueError(
-                        f"{path}:{i}: bad ttm_dividend value {value!r} for {ticker!r}"
-                    ) from e
+                if value in (None, ""):
+                    amount = 0.0
+                else:
+                    try:
+                        amount = float(cast(str, value))
+                    except (TypeError, ValueError) as e:
+                        raise ValueError(
+                            f"{path}:{i}: bad ttm_dividend value {value!r} for {ticker!r}"
+                        ) from e
+                result[str(ticker)] = amount
         return result
 
     def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None:

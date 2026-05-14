@@ -6,7 +6,7 @@ dividend/position transforms.
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
@@ -17,12 +17,14 @@ TTM_NUM_PAYMENTS = 4
 
 
 def _get_price_on_or_after(df: pd.DataFrame, d: date) -> pd.Series:
-    df2 = df[df.index.date >= d]
+    ts_index = pd.DatetimeIndex(pd.to_datetime(df.index))
+    df2 = df[ts_index.date >= d]
     return df2.iloc[0] if not df2.empty else df.iloc[0]
 
 
 def _get_price_on_or_before(df: pd.DataFrame, d: date) -> pd.Series:
-    df2 = df[df.index.date <= d]
+    ts_index = pd.DatetimeIndex(pd.to_datetime(df.index))
+    df2 = df[ts_index.date <= d]
     return df2.iloc[-1] if not df2.empty else df.iloc[-1]
 
 
@@ -40,7 +42,8 @@ def compute_return_periods(snapshot: ITickerSnapshot) -> dict[str, dict[str, obj
     for name, (sdate, edate) in periods.items():
         start_row = _get_price_on_or_after(hist, sdate)
         end_row = _get_price_on_or_before(hist, edate)
-        div_sum = divs[(divs.index.date >= sdate) & (divs.index.date <= edate)].sum()
+        div_idx = pd.DatetimeIndex(pd.to_datetime(divs.index))
+        div_sum = divs[(div_idx.date >= sdate) & (div_idx.date <= edate)].sum()
         price_return = (end_row["Close"] - start_row["Close"]) / start_row["Close"]
         total_return = (end_row["Close"] - start_row["Close"] + div_sum) / start_row[
             "Close"
@@ -49,8 +52,8 @@ def compute_return_periods(snapshot: ITickerSnapshot) -> dict[str, dict[str, obj
             "Adj Close"
         ]
         results[name] = {
-            "start_date": start_row.name.date(),
-            "end_date": end_row.name.date(),
+            "start_date": pd.Timestamp(cast(Any, start_row.name)).date(),
+            "end_date": pd.Timestamp(cast(Any, end_row.name)).date(),
             "start_close": float(start_row["Close"]),
             "end_close": float(end_row["Close"]),
             "dividends": float(div_sum),
