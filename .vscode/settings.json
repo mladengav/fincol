@@ -4,6 +4,8 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "flake8.enabled": true,
+    "flake8.importStrategy": "fromEnvironment",
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,
