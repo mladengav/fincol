@@ -6,6 +6,7 @@ import csv
 from collections.abc import Mapping
 from dataclasses import fields
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, cast, get_type_hints
 
@@ -54,6 +55,31 @@ def _cell_for_ticker_snapshot_field(row: Mapping[str, str | None], field_name: s
 
 
 _TICKER_SNAPSHOT_CSV_SKIP = frozenset({"ticker", "hist", "divs"})
+_EMPTY_DECIMAL = Decimal("0.00")
+_TICKER_SNAPSHOT_CSV_ATTRS = frozenset(
+    f.name for f in fields(YfTickerSnapshot) if f.name not in _TICKER_SNAPSHOT_CSV_SKIP
+)
+
+
+def _parse_decimal_cell(raw: str) -> Decimal:
+    s = raw.strip()
+    if not s:
+        return _EMPTY_DECIMAL
+    return Decimal(s)
+
+
+def _parse_int_cell(raw: str) -> int:
+    s = raw.strip()
+    if not s:
+        return 0
+    return int(float(s))
+
+
+def _parse_float_cell(raw: str) -> float:
+    s = raw.strip()
+    if not s:
+        return 0.0
+    return float(s)
 
 
 def _default_tickers_csv_fieldnames() -> list[str]:
@@ -73,7 +99,7 @@ def _attr_for_tickers_csv_column(column: str) -> str | None:
     """Map a CSV header to the :class:`~domain.iticker_snapshot.ITickerSnapshot` attribute, if any."""
     if column == "exDividendDate":
         return "exDividendDateUtc"
-    if column in ("snapshotDate", "symbol", "sectorKey", "industryKey"):
+    if column in _TICKER_SNAPSHOT_CSV_ATTRS:
         return column
     return None
 
@@ -81,6 +107,12 @@ def _attr_for_tickers_csv_column(column: str) -> str | None:
 def _format_value_for_tickers_csv(value: Any) -> str:
     if isinstance(value, date):
         return value.isoformat()
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return str(value)
     return str(value)
 
 
@@ -138,6 +170,12 @@ class CsvFincolIo(IFincolIo):
                         kwargs[fld.name] = _parse_date_cell(raw)
                     elif typ is str:
                         kwargs[fld.name] = raw
+                    elif typ is Decimal:
+                        kwargs[fld.name] = _parse_decimal_cell(raw)
+                    elif typ is int:
+                        kwargs[fld.name] = _parse_int_cell(raw)
+                    elif typ is float:
+                        kwargs[fld.name] = _parse_float_cell(raw)
                     else:
                         raise TypeError(
                             f"Unsupported YfTickerSnapshot field {fld.name!r}: {typ!r}"
