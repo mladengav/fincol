@@ -48,7 +48,7 @@ def _history_dividends_slice(df: pd.DataFrame) -> pd.DataFrame | pd.Series | Non
 
 
 @dataclass
-class TickerSnapshot:
+class YfTickerSnapshot:
     """Live bundle built by :meth:`YahooFinance.load_ticker` and follow-up loaders; implements :class:`ITickerSnapshot`."""
 
     snapshotDate: date
@@ -59,13 +59,13 @@ class TickerSnapshot:
     ticker: yf.Ticker = field(repr=False)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
 
-    def with_dividends(self) -> TickerSnapshot:
-        """Populate ``TickerSnapshot.divs`` from the bound ticker (ex-dividend series)."""
+    def with_dividends(self) -> YfTickerSnapshot:
+        """Populate ``YfTickerSnapshot.divs`` from the bound ticker (ex-dividend series)."""
         self.divs = self.ticker.dividends
         return self
 
-    def get_history(self, history_start: date, end: date) -> TickerSnapshot:
-        """Populate ``TickerSnapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""
+    def get_history(self, history_start: date, end: date) -> YfTickerSnapshot:
+        """Populate ``YfTickerSnapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""
         hist = self.ticker.history(
             start = history_start.isoformat(),
             end= (end + timedelta(days=1)).isoformat(),
@@ -74,7 +74,7 @@ class TickerSnapshot:
         )
         return hist
     
-    def with_info(self) -> TickerSnapshot:
+    def with_info(self) -> YfTickerSnapshot:
         """Load price history when implemented; until then ``hist`` stays empty."""
         _sleep_before_yf()
         info = self.ticker.info
@@ -92,10 +92,10 @@ class YahooFinance:
         symbol: str,
         withDividends: bool = False,
         withInfo: bool = False,
-    ) -> TickerSnapshot:
+    ) -> YfTickerSnapshot:
         """Create a yfinance :class:`yf.Ticker` and date window; optionally load dividends and/or ticker info."""
         end = datetime.now(UTC).date() - timedelta(days=1)  # end = yesterday
-        snap = TickerSnapshot(
+        snap = YfTickerSnapshot(
             snapshotDate=datetime.now().date(),
             symbol=symbol,
             sectorKey="",

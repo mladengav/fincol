@@ -48,7 +48,7 @@ def expected_dividends_td_to() -> pd.DataFrame:
 
 @pytest.fixture(scope="module")
 def snapshot_td_to(yahoo_finance: YahooFinance) -> ITickerSnapshot:
-    """Live :class:`TickerSnapshot` for TD.TO with dividends populated.
+    """Live :class:`YfTickerSnapshot` for TD.TO with dividends populated.
 
     Network call is made once per test module via ``scope="module"``.
     """
@@ -56,7 +56,7 @@ def snapshot_td_to(yahoo_finance: YahooFinance) -> ITickerSnapshot:
 
 
 def test_snapshot_td_to_matches_request(snapshot_td_to: ITickerSnapshot) -> None:
-    """Live Yahoo call for ``TD.TO`` with :meth:`~domain.iticker_snapshot.ITickerSnapshot.with_dividends` succeeds and preserves the symbol."""
+    """Live Yahoo call for ``TD.TO`` with :meth:`~infrastructure.yfinance_client.YfTickerSnapshot.with_dividends` succeeds and preserves the symbol."""
     assert snapshot_td_to.symbol == TD_TO_TICKER
 
 

@@ -9,14 +9,14 @@ from pathlib import Path
 import yfinance as yf
 
 from infrastructure.csv_io import CsvFincolIo
-from infrastructure.yfinance_client import TickerSnapshot
+from infrastructure.yfinance_client import YfTickerSnapshot
 
 _TESTCACHE = Path(__file__).resolve().parent / "testcache"
 _TICKERS_FIXTURE = _TESTCACHE / "tickers.csv"
 
 
 def test_read_cached_tickers_from_testcache_fixture() -> None:
-    """``read_cached_tickers`` maps ``testcache/tickers.csv`` rows onto :class:`~infrastructure.yfinance_client.TickerSnapshot` fields."""
+    """``read_cached_tickers`` maps ``testcache/tickers.csv`` rows onto :class:`~infrastructure.yfinance_client.YfTickerSnapshot` fields."""
     assert _TICKERS_FIXTURE.is_file(), f"missing fixture: {_TICKERS_FIXTURE}"
 
     fincol_io = CsvFincolIo(_TESTCACHE)
@@ -60,7 +60,7 @@ def test_write_tickers_to_cache_creates_minimal_csv(tmp_path: Path) -> None:
     """When ``tickers.csv`` is missing, write uses default headers and can be read back."""
     cache = tmp_path / "cache"
     io = CsvFincolIo(cache)
-    snap = TickerSnapshot(
+    snap = YfTickerSnapshot(
         snapshotDate=date(2024, 1, 2),
         symbol="ZZ.TO",
         sectorKey="sk",
@@ -93,7 +93,7 @@ def test_write_tickers_to_cache_merges_new_symbol_without_dropping_existing(
 
     io = CsvFincolIo(cache)
     ry = io.read_cached_tickers(["RY.TO"])[0]
-    other = TickerSnapshot(
+    other = YfTickerSnapshot(
         snapshotDate=date(2024, 6, 1),
         symbol="OTHER.TO",
         sectorKey="x",
@@ -122,7 +122,7 @@ def test_write_tickers_to_cache_update_one_symbol_leaves_others(tmp_path: Path) 
     io = CsvFincolIo(cache)
     io.write_tickers_to_cache(
         [
-            TickerSnapshot(
+            YfTickerSnapshot(
                 snapshotDate=date(2024, 6, 1),
                 symbol="OTHER.TO",
                 sectorKey="keep-me",
@@ -134,7 +134,7 @@ def test_write_tickers_to_cache_update_one_symbol_leaves_others(tmp_path: Path) 
     )
     io.write_tickers_to_cache(
         [
-            TickerSnapshot(
+            YfTickerSnapshot(
                 snapshotDate=date(2025, 1, 1),
                 symbol="RY.TO",
                 sectorKey="updated",
