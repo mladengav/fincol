@@ -7,12 +7,21 @@ import random
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
+from typing import Any
 
 import pandas as pd
 import yfinance as yf
 
 _DEFAULT_YF_DELAY_SECONDS = 1.0
 _DEFAULT_YF_JITTER_MAX_SECONDS = 1.0
+_EMPTY_DECIMAL = Decimal("0.00")
+
+
+def _decimal_from_info(value: Any) -> Decimal:
+    if value is None:
+        return _EMPTY_DECIMAL
+    return Decimal(str(value))
 
 def _sleep_before_yf() -> None:
     """Pause before yfinance network calls; delay and jitter max from env when set."""
@@ -50,11 +59,17 @@ class YfTickerSnapshot:
 
     snapshotDate: date
     symbol: str
-    sectorKey: str
-    industryKey: str
-    exDividendDateUtc: date
     ticker: yf.Ticker = field(repr=False)
+    sectorKey: str = ""
+    industryKey: str = ""
+    exDividendDateUtc: date = date(1900, 1, 1)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    longName: str = ""
+    currentPrice: Decimal = _EMPTY_DECIMAL
+    dividendRate: Decimal = _EMPTY_DECIMAL
+    dividendYield: float = 0.0
+    marketCap: int = 0
+    payoutRatio: float = 0.0
 
     def with_dividends(self) -> YfTickerSnapshot:
         """Populate ``YfTickerSnapshot.divs`` from the bound ticker (ex-dividend series)."""
@@ -72,12 +87,19 @@ class YfTickerSnapshot:
         return hist
     
     def with_info(self) -> YfTickerSnapshot:
-        """Load price history when implemented; until then ``hist`` stays empty."""
+        """Populate sector, industry, ex-dividend date, and quote fields from ``ticker.info``."""
         _sleep_before_yf()
         info = self.ticker.info
-        self.sectorKey = info["sectorKey"]
-        self.industryKey = info["industryKey"]
+        self.sectorKey = str(info.get("sectorKey") or "")
+        self.industryKey = str(info.get("industryKey") or "")
         self.exDividendDateUtc = info["exDividendDate"]
+        self.longName = str(info.get("longName") or "")
+        self.currentPrice = _decimal_from_info(info.get("currentPrice"))
+        self.dividendRate = _decimal_from_info(info.get("dividendRate"))
+        self.dividendYield = float(info.get("dividendYield") or 0.0)
+        raw_cap = info.get("marketCap")
+        self.marketCap = int(raw_cap) if raw_cap is not None else 0
+        self.payoutRatio = float(info.get("payoutRatio") or 0.0)
         return self
 
 
@@ -96,7 +118,7 @@ class YahooFinance:
             symbol=symbol,
             sectorKey="",
             industryKey="",
-            exDividendDateUtc=date(1970, 1, 1),
+            exDividendDateUtc=date(1900, 1, 1),
             ticker=yf.Ticker(symbol),
         )
         if withDividends:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import yfinance as yf
@@ -29,6 +30,12 @@ def test_read_cached_tickers_from_testcache_fixture() -> None:
     assert snap.sectorKey == "financial-services"
     assert snap.industryKey == "banks-diversified"
     assert snap.exDividendDateUtc == date(2026, 4, 23)
+    assert snap.longName == "Royal Bank of Canada"
+    assert snap.currentPrice == Decimal("250.55")
+    assert snap.dividendRate == Decimal("6.56")
+    assert snap.dividendYield == 2.66
+    assert snap.marketCap == 348615000000
+    assert snap.payoutRatio == 0.42580003
 
 
 def test_write_tickers_to_cache_roundtrip_preserves_header_and_mapped_fields(
@@ -54,6 +61,9 @@ def test_write_tickers_to_cache_roundtrip_preserves_header_and_mapped_fields(
     assert s.sectorKey == "financial-services"
     assert s.industryKey == "banks-diversified"
     assert s.exDividendDateUtc == date(2026, 4, 23)
+    assert s.longName == "Royal Bank of Canada"
+    assert s.currentPrice == Decimal("250.55")
+    assert s.dividendRate == Decimal("6.56")
 
 
 def test_write_tickers_to_cache_creates_minimal_csv(tmp_path: Path) -> None:

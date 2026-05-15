@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -54,6 +55,12 @@ class FakeTickerSnapshot:
     sectorKey: str
     industryKey: str
     exDividendDateUtc: date
+    longName: str = ""
+    currentPrice: Decimal = Decimal("0.00")
+    dividendRate: Decimal = Decimal("0.00")
+    dividendYield: float = 0.0
+    marketCap: int = 0
+    payoutRatio: float = 0.0
     hist: pd.DataFrame = field(default_factory=pd.DataFrame)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
 
@@ -91,7 +98,7 @@ class CsvBackedYahooFinance:
             symbol=symbol,
             sectorKey="",
             industryKey="",
-            exDividendDateUtc=date(1970, 1, 1)
+            exDividendDateUtc=date(1900, 1, 1)
         )
         if withDividends:
             snap.divs = self._template_divs.copy()

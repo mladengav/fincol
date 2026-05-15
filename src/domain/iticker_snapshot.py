@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from typing import Protocol, runtime_checkable
 
 import pandas as pd
@@ -17,6 +18,12 @@ class ITickerSnapshot(Protocol):
     sectorKey: str
     industryKey: str
     exDividendDateUtc: date
+    longName: str
+    currentPrice: Decimal
+    dividendRate: Decimal
+    dividendYield: float
+    marketCap: int
+    payoutRatio: float
     hist: pd.DataFrame
     divs: pd.Series
 
