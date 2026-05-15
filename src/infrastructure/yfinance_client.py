@@ -11,11 +11,8 @@ from datetime import UTC, date, datetime, timedelta
 import pandas as pd
 import yfinance as yf
 
-from domain.iticker_snapshot import ITickerSnapshot
-
 _DEFAULT_YF_DELAY_SECONDS = 1.0
 _DEFAULT_YF_JITTER_MAX_SECONDS = 1.0
-
 
 def _sleep_before_yf() -> None:
     """Pause before yfinance network calls; delay and jitter max from env when set."""
@@ -94,7 +91,6 @@ class YahooFinance:
         withInfo: bool = False,
     ) -> YfTickerSnapshot:
         """Create a yfinance :class:`yf.Ticker` and date window; optionally load dividends and/or ticker info."""
-        end = datetime.now(UTC).date() - timedelta(days=1)  # end = yesterday
         snap = YfTickerSnapshot(
             snapshotDate=datetime.now().date(),
             symbol=symbol,
@@ -135,6 +131,3 @@ class YahooFinance:
                 return {symbols[0]: total}
             return {sym: 0.0 for sym in symbols}
         return zeros
-
-    def load_tickers(self, symbol: str) -> yf.Tickers:
-        return yf.Tickers("TD.TO BNS.TO")

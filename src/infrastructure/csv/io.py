@@ -14,9 +14,8 @@ import yfinance as yf
 
 from domain.fincol_io import IFincolIo
 from domain.iticker_snapshot import ITickerSnapshot
-from infrastructure.yfinance_client import YfTickerSnapshot
-
 from infrastructure import _PROJECT_ROOT
+from infrastructure.yfinance_client import YfTickerSnapshot
 
 
 def _parse_date_cell(raw: str) -> date:

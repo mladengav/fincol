@@ -1,4 +1,4 @@
-"""Tests for :mod:`infrastructure.csv_io` cache readers."""
+"""Tests for :mod:`infrastructure.csv.io` cache readers."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yfinance as yf
 
-from infrastructure.csv_io import CsvFincolIo
+from infrastructure.csv import CsvFincolIo
 from infrastructure.yfinance_client import YfTickerSnapshot
 
 _TESTCACHE = Path(__file__).resolve().parent / "testcache"
