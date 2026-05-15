@@ -23,7 +23,7 @@ def _parse_date_cell(raw: str) -> date:
     """Parse ISO ``YYYY-MM-DD`` or Unix epoch seconds from a CSV cell into a :class:`~datetime.date`."""
     s = raw.strip()
     if not s:
-        return date(1970, 1, 1)
+        return date(1900, 1, 1)
     if len(s) >= 10 and s[4] == "-" and s[7] == "-":
         try:
             return date.fromisoformat(s[:10])
@@ -35,7 +35,7 @@ def _parse_date_cell(raw: str) -> date:
             ts /= 1000.0
         return datetime.fromtimestamp(ts, tz=UTC).date()
     except (ValueError, OSError, OverflowError):
-        return date(1970, 1, 1)
+        return date(1900, 1, 1)
 
 
 def _cell_for_ticker_snapshot_field(row: Mapping[str, str | None], field_name: str) -> str:

@@ -59,10 +59,10 @@ class YfTickerSnapshot:
 
     snapshotDate: date
     symbol: str
-    sectorKey: str
-    industryKey: str
-    exDividendDateUtc: date
     ticker: yf.Ticker = field(repr=False)
+    sectorKey: str = ""
+    industryKey: str = ""
+    exDividendDateUtc: date = date(1900, 1, 1)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
     longName: str = ""
     currentPrice: Decimal = _EMPTY_DECIMAL
@@ -118,7 +118,7 @@ class YahooFinance:
             symbol=symbol,
             sectorKey="",
             industryKey="",
-            exDividendDateUtc=date(1970, 1, 1),
+            exDividendDateUtc=date(1900, 1, 1),
             ticker=yf.Ticker(symbol),
         )
         if withDividends:

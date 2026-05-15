@@ -98,7 +98,7 @@ class CsvBackedYahooFinance:
             symbol=symbol,
             sectorKey="",
             industryKey="",
-            exDividendDateUtc=date(1970, 1, 1)
+            exDividendDateUtc=date(1900, 1, 1)
         )
         if withDividends:
             snap.divs = self._template_divs.copy()
