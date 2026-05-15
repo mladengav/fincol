@@ -2,7 +2,7 @@
 
 :class:`~application.dividend_loader.DividendLoader` is exercised with a test
 :class:`~application.iyahoo_finance.IYahooFinance` that reads ``bns_divs.csv``,
-persists via :class:`~infrastructure.csv_io.CsvFincolIo`, refreshes TTM
+persists via :class:`~infrastructure.csv.CsvFincolIo`, refreshes TTM
 aggregations via :class:`~application.aggregation_updater.AggregationUpdater`,
 and verifies cache CSV output against the ``testcache`` dividend fixture for
 ``BNS.TO``.
@@ -20,7 +20,7 @@ import pytest
 from application.aggregation_updater import AggregationUpdater
 from application.dividend_loader import DividendLoader
 from domain.iticker_snapshot import ITickerSnapshot
-from infrastructure.csv_io import CsvFincolIo
+from infrastructure.csv import CsvFincolIo
 
 DIVIDEND_HISTORY_CSV = (
     Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"

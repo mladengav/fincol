@@ -17,7 +17,7 @@ class IYahooFinance(Protocol):
         withDividends: bool = False,
         withInfo: bool = False,
     ) -> ITickerSnapshot:
-        """Create a yfinance ticker and date window; optional ``with_dividends()`` / ``with_info()`` when flags are true."""
+        """Create a yfinance ticker and date window; optional dividend/info loading when flags are true."""
         ...
 
     def dividend_sum_after_ex_date(self, symbols: list[str], ex_date: date) -> dict[str, float]:

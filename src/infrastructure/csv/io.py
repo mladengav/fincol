@@ -14,9 +14,8 @@ import yfinance as yf
 
 from domain.fincol_io import IFincolIo
 from domain.iticker_snapshot import ITickerSnapshot
-from infrastructure.yfinance_client import TickerSnapshot
-
 from infrastructure import _PROJECT_ROOT
+from infrastructure.yfinance_client import YfTickerSnapshot
 
 
 def _parse_date_cell(raw: str) -> date:
@@ -39,10 +38,10 @@ def _parse_date_cell(raw: str) -> date:
 
 
 def _cell_for_ticker_snapshot_field(row: Mapping[str, str | None], field_name: str) -> str:
-    """Return the raw string for a :class:`TickerSnapshot` field.
+    """Return the raw string for a :class:`YfTickerSnapshot` field.
 
     Yahoo ``tickers.csv`` exports use ``exDividendDate`` (epoch or date) for the
-    same value as :attr:`TickerSnapshot.exDividendDateUtc`.
+    same value as :attr:`YfTickerSnapshot.exDividendDateUtc`.
     """
     v = row.get(field_name)
     if v not in (None, ""):
@@ -58,9 +57,9 @@ _TICKER_SNAPSHOT_CSV_SKIP = frozenset({"ticker", "hist", "divs"})
 
 
 def _default_tickers_csv_fieldnames() -> list[str]:
-    """Header column order for a new ``tickers.csv`` (mirrors :class:`TickerSnapshot` minus skipped fields)."""
+    """Header column order for a new ``tickers.csv`` (mirrors :class:`YfTickerSnapshot` minus skipped fields)."""
     names: list[str] = []
-    for fld in fields(TickerSnapshot):
+    for fld in fields(YfTickerSnapshot):
         if fld.name in _TICKER_SNAPSHOT_CSV_SKIP:
             continue
         if fld.name == "exDividendDateUtc":
@@ -118,7 +117,7 @@ class CsvFincolIo(IFincolIo):
             return []
 
         wanted = set(ticker_symbols)
-        hints = get_type_hints(TickerSnapshot)
+        hints = get_type_hints(YfTickerSnapshot)
         out: list[ITickerSnapshot] = []
 
         with path.open("r", encoding="utf-8", newline="") as f:
@@ -130,7 +129,7 @@ class CsvFincolIo(IFincolIo):
                 if sym is None or sym == "" or sym not in wanted:
                     continue
                 kwargs: dict[str, Any] = {}
-                for fld in fields(TickerSnapshot):
+                for fld in fields(YfTickerSnapshot):
                     if fld.name in _TICKER_SNAPSHOT_CSV_SKIP:
                         continue
                     raw = _cell_for_ticker_snapshot_field(row, fld.name)
@@ -141,10 +140,10 @@ class CsvFincolIo(IFincolIo):
                         kwargs[fld.name] = raw
                     else:
                         raise TypeError(
-                            f"Unsupported TickerSnapshot field {fld.name!r}: {typ!r}"
+                            f"Unsupported YfTickerSnapshot field {fld.name!r}: {typ!r}"
                         )
                 kwargs["ticker"] = yf.Ticker(str(sym))
-                out.append(TickerSnapshot(**kwargs))
+                out.append(YfTickerSnapshot(**kwargs))
         return out
 
     def write_tickers_to_cache(self, snapshots: list[ITickerSnapshot]) -> None:

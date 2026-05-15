@@ -26,7 +26,7 @@ def test_adhere_to_diagram():
 
     rule = (
         project_slices("src/")
-        .defined_by_regex(re.compile(r"/([^/]+)/[^/]+\.py$"))
+        .defined_by_regex(re.compile(r"/src/(domain|application|infrastructure|presentation_cli)(?:/|$)"))
         .should()
         .adhere_to_diagram(diagram)
     )

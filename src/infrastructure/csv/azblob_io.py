@@ -1,4 +1,4 @@
-"""Azure Blob-backed :class:`~infrastructure.csv_io.CsvFincolIo` with a local cache mirror."""
+"""Azure Blob-backed :class:`~infrastructure.csv.io.CsvFincolIo` with a local cache mirror."""
 
 from __future__ import annotations
 
@@ -12,9 +12,8 @@ from azure.storage.blob import BlobServiceClient
 from dotenv import load_dotenv
 
 from domain.iticker_snapshot import ITickerSnapshot
-
 from infrastructure import _PROJECT_ROOT
-from infrastructure.csv_io import CsvFincolIo
+from infrastructure.csv.io import CsvFincolIo
 
 
 class AzBlobCsvFincolIo(CsvFincolIo):

@@ -14,8 +14,7 @@ from pathlib import Path
 
 from application import fincol_math as fm
 from domain.fincol_io import IFincolIo, ISymbolLoader
-from infrastructure.csv_io import CsvFincolIo
-from infrastructure.csv_symbol_loader import CsvSymbolLoader
+from infrastructure.csv import CsvFincolIo, CsvSymbolLoader
 from infrastructure.json_symbol_loader import JsonSymbolLoader
 
 
