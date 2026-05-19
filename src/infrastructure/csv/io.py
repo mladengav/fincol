@@ -120,7 +120,8 @@ class CsvFincolIo(IFincolIo):
 
     _DEFAULT_FOLDER = _PROJECT_ROOT / "cache"
     _TICKERS_CSV = "tickers.csv"
-    _TTM_INCOME_CSV = "ttm_income.csv"
+    _AGGREGATIONS_SUBDIR = "aggregations"
+    _TTM_INCOME_CSV = Path(_AGGREGATIONS_SUBDIR) / "ttm_income.csv"
     _DIVIDEND_HISTORY_CSV = "dividend_history.csv"
 
     def __init__(self, folder: Path | None = None) -> None:
