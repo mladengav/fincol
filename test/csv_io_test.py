@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import shutil
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -52,7 +53,7 @@ def test_read_cached_tickers_from_testcache_fixture() -> None:
     assert len(snapshots) == 1
     snap = snapshots[0]
     assert snap.symbol == "RY.TO"
-    assert snap.snapshotDate == date(2026, 5, 14)
+    assert snap.snapshotDate == date(2026, 5, 19)
     assert snap.sectorKey == "financial-services"
     assert snap.industryKey == "banks-diversified"
     assert snap.industry == "Banks - Diversified"
@@ -60,14 +61,14 @@ def test_read_cached_tickers_from_testcache_fixture() -> None:
     assert snap.exDividendDate == date(2026, 4, 23)
     assert snap.lastDividendDate == date(2026, 4, 23)
     assert snap.longName == "Royal Bank of Canada"
-    assert snap.regularMarketPrice == Decimal("250.55")
-    assert snap.regularMarketTime == datetime(2026, 5, 14, 16, 26, 56, tzinfo=UTC)
+    assert snap.regularMarketPrice == Decimal("252.53")
+    assert snap.regularMarketTime == datetime(2026, 5, 19, 20, 00, 00, tzinfo=UTC)
     assert snap.dividendRate == Decimal("6.56")
-    assert snap.dividendYield == 2.66
-    assert snap.marketCap == 348615000000
+    assert snap.dividendYield == 2.6
+    assert snap.marketCap == 351370215424
     assert snap.payoutRatio == 0.42580003
-    assert snap.heldPercentInsiders == 0.00027
-    assert snap.heldPercentInstitutions == 0.4889
+    assert math.isclose(snap.heldPercentInsiders, 0.00027, rel_tol=1e-6)
+    assert math.isclose(snap.heldPercentInstitutions, 0.49071997, rel_tol=1e-6)
     assert snap.quoteType == "EQUITY"
     assert snap.typeDisp == "Equity"
 
@@ -91,12 +92,12 @@ def test_write_tickers_to_cache_roundtrip_preserves_header_and_mapped_fields(
     assert len(again) == 1
     s = again[0]
     assert s.symbol == "RY.TO"
-    assert s.snapshotDate == date(2026, 5, 14)
+    assert s.snapshotDate == date(2026, 5, 19)
     assert s.sectorKey == "financial-services"
     assert s.industryKey == "banks-diversified"
     assert s.exDividendDate == date(2026, 4, 23)
     assert s.longName == "Royal Bank of Canada"
-    assert s.regularMarketPrice == Decimal("250.55")
+    assert s.regularMarketPrice == Decimal("252.53")
     assert s.dividendRate == Decimal("6.56")
 
 
