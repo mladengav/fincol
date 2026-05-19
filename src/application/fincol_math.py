@@ -29,7 +29,7 @@ def _get_price_on_or_before(df: pd.DataFrame, d: date) -> pd.Series:
 
 
 def compute_return_periods(snapshot: ITickerSnapshot, history_start: date) -> dict[str, dict[str, object]]:
-    """1d, 1m, YTD metrics using ``snapshot.hist`` and ``snapshot.divs``."""
+    """1d, 1m, YTD metrics using ``snapshot.get_history`` and ``snapshot.divs``."""
     today = datetime.now().date()
     hist = snapshot.get_history(history_start, today)
 

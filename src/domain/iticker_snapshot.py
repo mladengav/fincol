@@ -24,7 +24,6 @@ class ITickerSnapshot(Protocol):
     dividendYield: float
     marketCap: int
     payoutRatio: float
-    hist: pd.DataFrame
     divs: pd.Series
 
     def get_history(self, history_start: date, end: date) -> ITickerSnapshot: ...

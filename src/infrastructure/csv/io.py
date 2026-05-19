@@ -54,7 +54,7 @@ def _cell_for_ticker_snapshot_field(row: Mapping[str, str | None], field_name: s
     return ""
 
 
-_TICKER_SNAPSHOT_CSV_SKIP = frozenset({"ticker", "hist", "divs"})
+_TICKER_SNAPSHOT_CSV_SKIP = frozenset({"ticker", "divs"})
 _EMPTY_DECIMAL = Decimal("0.00")
 _TICKER_SNAPSHOT_CSV_ATTRS = frozenset(
     f.name for f in fields(YfTickerSnapshot) if f.name not in _TICKER_SNAPSHOT_CSV_SKIP

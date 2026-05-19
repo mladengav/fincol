@@ -61,7 +61,6 @@ class FakeTickerSnapshot:
     dividendYield: float = 0.0
     marketCap: int = 0
     payoutRatio: float = 0.0
-    hist: pd.DataFrame = field(default_factory=pd.DataFrame)
     divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
 
     def with_dividends(self) -> ITickerSnapshot:

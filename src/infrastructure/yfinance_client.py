@@ -77,7 +77,7 @@ class YfTickerSnapshot:
         return self
 
     def get_history(self, history_start: date, end: date) -> YfTickerSnapshot:
-        """Populate ``YfTickerSnapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""
+        """Fetch daily price history for the given date window (``auto_adjust=False``)."""
         hist = self.ticker.history(
             start = history_start.isoformat(),
             end= (end + timedelta(days=1)).isoformat(),
