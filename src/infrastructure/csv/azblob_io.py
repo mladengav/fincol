@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -57,6 +58,12 @@ class AzBlobCsvFincolIo(CsvFincolIo):
 
     def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None:
         super().write_ttm_income(ttm_by_ticker)
+        self._sync_to_azure()
+
+    def write_last_dividend_decrease(
+        self, last_decrease_by_ticker: Mapping[str, date]
+    ) -> None:
+        super().write_last_dividend_decrease(last_decrease_by_ticker)
         self._sync_to_azure()
 
     def write_dividend_history(self, body: pd.DataFrame) -> None:

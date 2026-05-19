@@ -122,6 +122,9 @@ class CsvFincolIo(IFincolIo):
     _TICKERS_CSV = "tickers.csv"
     _AGGREGATIONS_SUBDIR = "aggregations"
     _TTM_INCOME_CSV = Path(_AGGREGATIONS_SUBDIR) / "ttm_income.csv"
+    _LAST_DIVIDEND_DECREASE_CSV = (
+        Path(_AGGREGATIONS_SUBDIR) / "last_dividend_decrease.csv"
+    )
     _DIVIDEND_HISTORY_CSV = "dividend_history.csv"
 
     def __init__(self, folder: Path | None = None) -> None:
@@ -282,6 +285,43 @@ class CsvFincolIo(IFincolIo):
             f.write('"ticker","ttm_dividend"\n')
             for ticker in sorted(ttm_by_ticker):
                 f.write(f'"{ticker}",{float(ttm_by_ticker[ticker]):.4f}\n')
+
+    def read_last_dividend_decrease(self) -> dict[str, date]:
+        path = self._folder / self._LAST_DIVIDEND_DECREASE_CSV
+
+        if not (path.exists() and path.stat().st_size > 0):
+            return {}
+
+        with path.open("r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            missing = {"ticker", "last_dividend_decrease"} - set(reader.fieldnames or [])
+            if missing:
+                raise ValueError(
+                    f"{path}: missing required column(s): {sorted(missing)}"
+                )
+            result: dict[str, date] = {}
+            for i, row in enumerate(reader, start=2):
+                ticker = row.get("ticker")
+                value = row.get("last_dividend_decrease")
+                if not ticker:
+                    raise ValueError(f"{path}:{i}: empty ticker")
+                if value in (None, ""):
+                    result[str(ticker)] = date(1900, 1, 1)
+                else:
+                    result[str(ticker)] = _parse_date_cell(str(value))
+        return result
+
+    def write_last_dividend_decrease(
+        self, last_decrease_by_ticker: Mapping[str, date]
+    ) -> None:
+        path = self._folder / self._LAST_DIVIDEND_DECREASE_CSV
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as f:
+            f.write('"ticker","last_dividend_decrease"\n')
+            for ticker in sorted(last_decrease_by_ticker):
+                d = last_decrease_by_ticker[ticker]
+                f.write(f'"{ticker}","{d.isoformat()}"\n')
 
     def read_dividend_history(self) -> pd.DataFrame:
         path = self._folder / self._DIVIDEND_HISTORY_CSV

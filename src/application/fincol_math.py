@@ -12,6 +12,7 @@ import pandas as pd
 
 TTM_NUM_PAYMENTS = 4
 
+
 def _get_price_on_or_after(df: pd.DataFrame, d: date) -> pd.Series:
     ts_index = pd.DatetimeIndex(pd.to_datetime(df.index))
     df2 = df[ts_index.date >= d]
@@ -73,6 +74,22 @@ def ttm_per_share_for_ticker(ticker: str, div_hist: pd.DataFrame) -> float:
         .head(TTM_NUM_PAYMENTS)
     )
     return float(s["amount"].sum())
+
+
+def last_dividend_decrease_date_for_ticker(ticker: str, div_hist: pd.DataFrame) -> date:
+    """Latest ex-date where amount fell vs the prior payment; else earliest ex-date, or today if none."""
+    sub = div_hist[div_hist["ticker"] == ticker]
+    if sub.empty:
+        return datetime.now().date()
+    s = sub.assign(_d=pd.to_datetime(sub["date"])).sort_values("_d")
+    first_date = pd.Timestamp(s["_d"].iloc[0]).date()
+    if len(s) < 2:
+        return first_date
+    prev_amount = s["amount"].shift(1)
+    decreases = s[s["amount"] < prev_amount]
+    if decreases.empty:
+        return first_date
+    return pd.Timestamp(decreases["_d"].iloc[-1]).date()
 
 
 def aggregate_positions_by_ticker(
