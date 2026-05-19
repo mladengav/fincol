@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import shutil
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -25,13 +25,21 @@ def _default_ticker_snapshot(
         symbol=symbol,
         sectorKey=sectorKey,
         industryKey=industryKey,
+        industry="",
+        sector="",
         exDividendDate=exDividendDate,
+        lastDividendDate=date(1900, 1, 1),
         longName="",
-        currentPrice=Decimal("0.00"),
+        regularMarketPrice=Decimal("0.00"),
+        regularMarketTime=datetime(1900, 1, 1, tzinfo=UTC),
         dividendRate=Decimal("0.00"),
         dividendYield=0.0,
         marketCap=0,
         payoutRatio=0.0,
+        heldPercentInsiders=0.0,
+        heldPercentInstitutions=0.0,
+        quoteType="",
+        typeDisp="",
     )
 
 def test_read_cached_tickers_from_testcache_fixture() -> None:
@@ -47,13 +55,21 @@ def test_read_cached_tickers_from_testcache_fixture() -> None:
     assert snap.snapshotDate == date(2026, 5, 14)
     assert snap.sectorKey == "financial-services"
     assert snap.industryKey == "banks-diversified"
+    assert snap.industry == "Banks - Diversified"
+    assert snap.sector == "Financial Services"
     assert snap.exDividendDate == date(2026, 4, 23)
+    assert snap.lastDividendDate == date(2026, 4, 23)
     assert snap.longName == "Royal Bank of Canada"
-    assert snap.currentPrice == Decimal("250.55")
+    assert snap.regularMarketPrice == Decimal("250.55")
+    assert snap.regularMarketTime == datetime(2026, 5, 14, 16, 26, 56, tzinfo=UTC)
     assert snap.dividendRate == Decimal("6.56")
     assert snap.dividendYield == 2.66
     assert snap.marketCap == 348615000000
     assert snap.payoutRatio == 0.42580003
+    assert snap.heldPercentInsiders == 0.00027
+    assert snap.heldPercentInstitutions == 0.4889
+    assert snap.quoteType == "EQUITY"
+    assert snap.typeDisp == "Equity"
 
 
 def test_write_tickers_to_cache_roundtrip_preserves_header_and_mapped_fields(
@@ -80,7 +96,7 @@ def test_write_tickers_to_cache_roundtrip_preserves_header_and_mapped_fields(
     assert s.industryKey == "banks-diversified"
     assert s.exDividendDate == date(2026, 4, 23)
     assert s.longName == "Royal Bank of Canada"
-    assert s.currentPrice == Decimal("250.55")
+    assert s.regularMarketPrice == Decimal("250.55")
     assert s.dividendRate == Decimal("6.56")
 
 

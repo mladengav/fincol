@@ -36,6 +36,25 @@ def _parse_date_cell(raw: str) -> date:
         return date(1900, 1, 1)
 
 
+def _parse_datetime_cell(raw: str) -> datetime:
+    """Parse ISO datetime or Unix epoch seconds from a CSV cell into UTC :class:`~datetime.datetime`."""
+    s = raw.strip()
+    if not s:
+        return datetime(1900, 1, 1, tzinfo=UTC)
+    if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+        try:
+            return datetime.fromisoformat(s.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+    try:
+        ts = float(s)
+        if ts > 1e12:
+            ts /= 1000.0
+        return datetime.fromtimestamp(ts, tz=UTC)
+    except (ValueError, OSError, OverflowError):
+        return datetime(1900, 1, 1, tzinfo=UTC)
+
+
 _EMPTY_DECIMAL = Decimal("0.00")
 _TICKER_SNAPSHOT_CSV_ATTRS = frozenset(
     f.name for f in fields(TickerSnapshot)
@@ -69,6 +88,9 @@ def _default_tickers_csv_fieldnames() -> list[str]:
 
 
 def _format_value_for_tickers_csv(value: Any) -> str:
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+        return str(int(dt.timestamp()))
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Decimal):
@@ -130,6 +152,8 @@ class CsvFincolIo(IFincolIo):
                     typ = hints[fld.name]
                     if typ is date:
                         kwargs[fld.name] = _parse_date_cell(raw)
+                    elif typ is datetime:
+                        kwargs[fld.name] = _parse_datetime_cell(raw)
                     elif typ is str:
                         kwargs[fld.name] = raw
                     elif typ is Decimal:

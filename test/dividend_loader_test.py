@@ -11,7 +11,7 @@ and verifies cache CSV output against the ``testcache`` dividend fixture for
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -68,13 +68,21 @@ class CsvBackedYahooFinance(IYahooFinance):
             symbol=symbol,
             sectorKey="",
             industryKey="",
+            industry="",
+            sector="",
             exDividendDate=date(1900, 1, 1),
+            lastDividendDate=date(1900, 1, 1),
             longName="",
-            currentPrice=Decimal("0.00"),
+            regularMarketPrice=Decimal("0.00"),
+            regularMarketTime=datetime(1900, 1, 1, tzinfo=UTC),
             dividendRate=Decimal("0.00"),
             dividendYield=0.0,
             marketCap=0,
             payoutRatio=0.0,
+            heldPercentInsiders=0.0,
+            heldPercentInstitutions=0.0,
+            quoteType="",
+            typeDisp="",
         )
         return snap
 
