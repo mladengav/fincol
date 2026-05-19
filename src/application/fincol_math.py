@@ -10,11 +10,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
-if TYPE_CHECKING:
-    from domain.iticker_snapshot import ITickerSnapshot
-
 TTM_NUM_PAYMENTS = 4
-
 
 def _get_price_on_or_after(df: pd.DataFrame, d: date) -> pd.Series:
     ts_index = pd.DatetimeIndex(pd.to_datetime(df.index))
