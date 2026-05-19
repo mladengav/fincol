@@ -18,14 +18,14 @@ def _default_ticker_snapshot(
     symbol: str,
     sectorKey: str,
     industryKey: str,
-    exDividendDateUtc: date) -> TickerSnapshot:
+    exDividendDate: date) -> TickerSnapshot:
 
     return TickerSnapshot(
         snapshotDate=snapshotDate,
         symbol=symbol,
         sectorKey=sectorKey,
         industryKey=industryKey,
-        exDividendDateUtc=exDividendDateUtc,
+        exDividendDate=exDividendDate,
         longName="",
         currentPrice=Decimal("0.00"),
         dividendRate=Decimal("0.00"),
@@ -47,7 +47,7 @@ def test_read_cached_tickers_from_testcache_fixture() -> None:
     assert snap.snapshotDate == date(2026, 5, 14)
     assert snap.sectorKey == "financial-services"
     assert snap.industryKey == "banks-diversified"
-    assert snap.exDividendDateUtc == date(2026, 4, 23)
+    assert snap.exDividendDate == date(2026, 4, 23)
     assert snap.longName == "Royal Bank of Canada"
     assert snap.currentPrice == Decimal("250.55")
     assert snap.dividendRate == Decimal("6.56")
@@ -78,7 +78,7 @@ def test_write_tickers_to_cache_roundtrip_preserves_header_and_mapped_fields(
     assert s.snapshotDate == date(2026, 5, 14)
     assert s.sectorKey == "financial-services"
     assert s.industryKey == "banks-diversified"
-    assert s.exDividendDateUtc == date(2026, 4, 23)
+    assert s.exDividendDate == date(2026, 4, 23)
     assert s.longName == "Royal Bank of Canada"
     assert s.currentPrice == Decimal("250.55")
     assert s.dividendRate == Decimal("6.56")
@@ -93,7 +93,7 @@ def test_write_tickers_to_cache_creates_minimal_csv(tmp_path: Path) -> None:
         symbol="ZZ.TO",
         sectorKey="sk",
         industryKey="ik",
-        exDividendDateUtc=date(2024, 3, 4)
+        exDividendDate=date(2024, 3, 4)
     )
     io.write_tickers_to_cache([snap])
 
@@ -104,7 +104,7 @@ def test_write_tickers_to_cache_creates_minimal_csv(tmp_path: Path) -> None:
     assert r.snapshotDate == date(2024, 1, 2)
     assert r.sectorKey == "sk"
     assert r.industryKey == "ik"
-    assert r.exDividendDateUtc == date(2024, 3, 4)
+    assert r.exDividendDate == date(2024, 3, 4)
 
 
 def test_write_tickers_to_cache_merges_new_symbol_without_dropping_existing(
@@ -125,7 +125,7 @@ def test_write_tickers_to_cache_merges_new_symbol_without_dropping_existing(
         symbol="OTHER.TO",
         sectorKey="x",
         industryKey="y",
-        exDividendDateUtc=date(2024, 6, 15)
+        exDividendDate=date(2024, 6, 15)
     )
     io.write_tickers_to_cache([other])
 
@@ -153,7 +153,7 @@ def test_write_tickers_to_cache_update_one_symbol_leaves_others(tmp_path: Path) 
                 symbol="OTHER.TO",
                 sectorKey="keep-me",
                 industryKey="y",
-                exDividendDateUtc=date(2024, 6, 15)
+                exDividendDate=date(2024, 6, 15)
             )
         ]
     )
@@ -164,7 +164,7 @@ def test_write_tickers_to_cache_update_one_symbol_leaves_others(tmp_path: Path) 
                 symbol="RY.TO",
                 sectorKey="updated",
                 industryKey="updated-ik",
-                exDividendDateUtc=date(2025, 2, 2)
+                exDividendDate=date(2025, 2, 2)
             )
         ]
     )

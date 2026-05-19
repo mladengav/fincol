@@ -72,7 +72,7 @@ class DividendLoader:
         known_tickers_to_update = []
         by_ex_date: defaultdict[date, list[str]] = defaultdict(list)
         for kt in known_tickers:
-            by_ex_date[kt.exDividendDateUtc].append(kt.symbol)
+            by_ex_date[kt.exDividendDate].append(kt.symbol)
         for ex_date in sorted(by_ex_date):
             tickers = sorted(by_ex_date[ex_date])
             print(f"Ex-dividend date {ex_date}: {tickers}")

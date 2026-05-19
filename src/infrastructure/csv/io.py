@@ -36,22 +36,6 @@ def _parse_date_cell(raw: str) -> date:
         return date(1900, 1, 1)
 
 
-def _cell_for_ticker_snapshot_field(row: Mapping[str, str | None], field_name: str) -> str:
-    """Return the raw string for a :class:`TickerSnapshot` field.
-
-    Yahoo ``tickers.csv`` exports use ``exDividendDate`` (epoch or date) for the
-    same value as :attr:`TickerSnapshot.exDividendDateUtc`.
-    """
-    v = row.get(field_name)
-    if v not in (None, ""):
-        return str(v)
-    if field_name == "exDividendDateUtc":
-        alt = row.get("exDividendDate")
-        if alt not in (None, ""):
-            return str(alt)
-    return ""
-
-
 _EMPTY_DECIMAL = Decimal("0.00")
 _TICKER_SNAPSHOT_CSV_ATTRS = frozenset(
     f.name for f in fields(TickerSnapshot)
@@ -80,23 +64,8 @@ def _parse_float_cell(raw: str) -> float:
 
 
 def _default_tickers_csv_fieldnames() -> list[str]:
-    """Header column order for a new ``tickers.csv`` (mirrors :class:`TickerSnapshot` minus skipped fields)."""
-    names: list[str] = []
-    for fld in fields(TickerSnapshot):
-        if fld.name == "exDividendDateUtc":
-            names.append("exDividendDate")
-        else:
-            names.append(fld.name)
-    return names
-
-
-def _attr_for_tickers_csv_column(column: str) -> str | None:
-    """Map a CSV header to the :class:`~domain.ticker_snapshot.TickerSnapshot` attribute, if any."""
-    if column == "exDividendDate":
-        return "exDividendDateUtc"
-    if column in _TICKER_SNAPSHOT_CSV_ATTRS:
-        return column
-    return None
+    """Header column order for a new ``tickers.csv`` (mirrors :class:`TickerSnapshot`)."""
+    return [fld.name for fld in fields(TickerSnapshot)]
 
 
 def _format_value_for_tickers_csv(value: Any) -> str:
@@ -116,8 +85,8 @@ def _tickers_csv_row_from_snapshot(
 ) -> dict[str, str]:
     return {
         col: (
-            _format_value_for_tickers_csv(getattr(snap, attr))
-            if (attr := _attr_for_tickers_csv_column(col)) is not None
+            _format_value_for_tickers_csv(getattr(snap, col))
+            if col in _TICKER_SNAPSHOT_CSV_ATTRS
             else ""
         )
         for col in fieldnames
@@ -157,7 +126,7 @@ class CsvFincolIo(IFincolIo):
                     continue
                 kwargs: dict[str, Any] = {}
                 for fld in fields(TickerSnapshot):
-                    raw = _cell_for_ticker_snapshot_field(row, fld.name)
+                    raw = str(row.get(fld.name) or "")
                     typ = hints[fld.name]
                     if typ is date:
                         kwargs[fld.name] = _parse_date_cell(raw)

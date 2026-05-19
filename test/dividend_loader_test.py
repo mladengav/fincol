@@ -68,7 +68,7 @@ class CsvBackedYahooFinance(IYahooFinance):
             symbol=symbol,
             sectorKey="",
             industryKey="",
-            exDividendDateUtc=date(1900, 1, 1),
+            exDividendDate=date(1900, 1, 1),
             longName="",
             currentPrice=Decimal("0.00"),
             dividendRate=Decimal("0.00"),

@@ -11,13 +11,13 @@ import pandas as pd
 
 @dataclass
 class TickerSnapshot():
-    """Bundle of symbol, date window, price history, and dividend series from Yahoo."""
+    """Bundle of symbol, data from Yahoo."""
 
     snapshotDate: date
     symbol: str
     sectorKey: str
     industryKey: str
-    exDividendDateUtc: date
+    exDividendDate: date
     longName: str
     currentPrice: Decimal
     dividendRate: Decimal

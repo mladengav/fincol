@@ -67,7 +67,7 @@ class YahooFinance:
             symbol=symbol,
             sectorKey=str(info.get("sectorKey") or ""),
             industryKey=str(info.get("industryKey") or ""),
-            exDividendDateUtc=info["exDividendDate"],
+            exDividendDate=info["exDividendDate"],
             longName=str(info.get("longName") or ""),
             currentPrice=_decimal_from_info(info.get("currentPrice")),
             dividendRate=_decimal_from_info(info.get("dividendRate")),
