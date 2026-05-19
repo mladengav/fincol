@@ -12,7 +12,6 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from domain.iticker_snapshot import ITickerSnapshot
 from infrastructure.yfinance_client import YahooFinance
 
 DIVIDEND_HISTORY_CSV = (
@@ -46,32 +45,18 @@ def expected_dividends_td_to() -> pd.DataFrame:
     return rows.sort_values("date").reset_index(drop=True)
 
 
-@pytest.fixture(scope="module")
-def snapshot_td_to(yahoo_finance: YahooFinance) -> ITickerSnapshot:
-    """Live :class:`YfTickerSnapshot` for TD.TO with dividends populated.
-
-    Network call is made once per test module via ``scope="module"``.
-    """
-    return yahoo_finance.load_ticker(TD_TO_TICKER).with_dividends()
-
-
-def test_snapshot_td_to_matches_request(snapshot_td_to: ITickerSnapshot) -> None:
-    """Live Yahoo call for ``TD.TO`` with :meth:`~infrastructure.yfinance_client.YfTickerSnapshot.with_dividends` succeeds and preserves the symbol."""
-    assert snapshot_td_to.symbol == TD_TO_TICKER
-
-
 def test_snapshot_td_to_dividends_contain_all_cached_entries(
-    snapshot_td_to: ITickerSnapshot,
     expected_dividends_td_to: pd.DataFrame,
+    yahoo_finance: YahooFinance,
 ) -> None:
     """Every dividend in the CSV fixture must appear in ``snapshot_td_to.divs`` for TD.TO.
 
     Extra (likely more recent) dividends in ``snapshot_td_to.divs`` are allowed.
     """
-    divs = snapshot_td_to.divs
+    divs = yahoo_finance.load_ticker_dividends(TD_TO_TICKER)
     assert isinstance(
         divs, pd.Series
-    ), f"Expected snapshot_td_to.divs to be a pandas.Series, got {type(divs).__name__}"
+    ), f"Expected snapshot_td_to.get_dividends() to be a pandas.Series, got {type(divs).__name__}"
     assert not divs.empty, f"yfinance returned no dividends for {TD_TO_TICKER}"
 
     live_by_date: dict[str, float] = {

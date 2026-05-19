@@ -5,19 +5,31 @@ from __future__ import annotations
 from datetime import date
 from typing import Protocol
 
-from domain.iticker_snapshot import ITickerSnapshot
-
+from domain.ticker_snapshot import TickerSnapshot
+import pandas as pd
 
 class IYahooFinance(Protocol):
     """Structural contract for Yahoo Finance data access (yfinance-backed)."""
 
-    def load_ticker(
+    def load_ticker_info(
         self,
-        symbol: str,
-        withDividends: bool = False,
-        withInfo: bool = False,
-    ) -> ITickerSnapshot:
-        """Create a yfinance ticker and date window; optional dividend/info loading when flags are true."""
+        symbol: str
+    ) -> TickerSnapshot:
+        """Create a yfinance ticker snapshot"""
+        ...
+
+    def load_ticker_dividends(
+        self,
+        symbol: str
+    ) -> pd.Series:
+        """Fetch ex-dividend series from the bound ticker."""
+        ...
+    
+    def load_ticker_history(
+        self,
+        symbol: str
+    ) -> pd.DataFrame:
+        """Fetch event history from the bound ticker."""
         ...
 
     def dividend_sum_after_ex_date(self, symbols: list[str], ex_date: date) -> dict[str, float]:

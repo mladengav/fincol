@@ -5,9 +5,9 @@ from __future__ import annotations
 import os
 import random
 import time
-from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+from domain.ticker_snapshot import TickerSnapshot
 from typing import Any
 
 import pandas as pd
@@ -52,80 +52,46 @@ def _history_dividends_slice(df: pd.DataFrame) -> pd.DataFrame | pd.Series | Non
         return df["Dividends"]
     return None
 
+class YahooFinance:
+    """Yahoo Finance client backed by ``yfinance``; implements :class:`~application.iyahoo_finance.IYahooFinance`."""
 
-@dataclass
-class YfTickerSnapshot:
-    """Live bundle built by :meth:`YahooFinance.load_ticker` and follow-up loaders; implements :class:`ITickerSnapshot`."""
+    def load_ticker_info(
+        self,
+        symbol: str
+    ) -> TickerSnapshot:
+        """Create a yfinance :class:`yf.Ticker` and date window; optionally load dividends and/or ticker info."""
+        info = yf.Ticker(symbol).info
 
-    snapshotDate: date
-    symbol: str
-    ticker: yf.Ticker = field(repr=False)
-    sectorKey: str = ""
-    industryKey: str = ""
-    exDividendDateUtc: date = date(1900, 1, 1)
-    divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
-    longName: str = ""
-    currentPrice: Decimal = _EMPTY_DECIMAL
-    dividendRate: Decimal = _EMPTY_DECIMAL
-    dividendYield: float = 0.0
-    marketCap: int = 0
-    payoutRatio: float = 0.0
+        snap = TickerSnapshot(
+            snapshotDate=datetime.now().date(),
+            symbol=symbol,
+            sectorKey=str(info.get("sectorKey") or ""),
+            industryKey=str(info.get("industryKey") or ""),
+            exDividendDate=info["exDividendDate"],
+            longName=str(info.get("longName") or ""),
+            currentPrice=_decimal_from_info(info.get("currentPrice")),
+            dividendRate=_decimal_from_info(info.get("dividendRate")),
+            dividendYield=float(info.get("dividendYield") or 0.0),
+            marketCap=int(info.get("marketCap") or 0),
+            payoutRatio=float(info.get("payoutRatio") or 0.0),
+        )
 
-    def with_dividends(self) -> YfTickerSnapshot:
-        """Populate ``YfTickerSnapshot.divs`` from the bound ticker (ex-dividend series)."""
-        self.divs = self.ticker.dividends
-        return self
+        return snap
 
-    def get_history(self, history_start: date, end: date) -> YfTickerSnapshot:
-        """Populate ``YfTickerSnapshot.hist`` for the snapshot's date window (daily bars, ``auto_adjust=False``)."""
-        hist = self.ticker.history(
+    def load_ticker_dividends(self, symbol: str) -> pd.Series:
+        """Fetch ex-dividend series from the bound ticker."""
+        return yf.Ticker(symbol).dividends
+
+
+    def load_ticker_history(self, symbol: str,history_start: date, end: date) -> pd.DataFrame:
+        """Fetch daily event history for the given date window (``auto_adjust=False``)."""
+        hist = yf.Ticker(symbol).history(
             start = history_start.isoformat(),
             end= (end + timedelta(days=1)).isoformat(),
             interval="1d",
             auto_adjust=False
         )
         return hist
-    
-    def with_info(self) -> YfTickerSnapshot:
-        """Populate sector, industry, ex-dividend date, and quote fields from ``ticker.info``."""
-        _sleep_before_yf()
-        info = self.ticker.info
-        self.sectorKey = str(info.get("sectorKey") or "")
-        self.industryKey = str(info.get("industryKey") or "")
-        self.exDividendDateUtc = info["exDividendDate"]
-        self.longName = str(info.get("longName") or "")
-        self.currentPrice = _decimal_from_info(info.get("currentPrice"))
-        self.dividendRate = _decimal_from_info(info.get("dividendRate"))
-        self.dividendYield = float(info.get("dividendYield") or 0.0)
-        raw_cap = info.get("marketCap")
-        self.marketCap = int(raw_cap) if raw_cap is not None else 0
-        self.payoutRatio = float(info.get("payoutRatio") or 0.0)
-        return self
-
-
-class YahooFinance:
-    """Yahoo Finance client backed by ``yfinance``; implements :class:`~application.iyahoo_finance.IYahooFinance`."""
-
-    def load_ticker(
-        self,
-        symbol: str,
-        withDividends: bool = False,
-        withInfo: bool = False,
-    ) -> YfTickerSnapshot:
-        """Create a yfinance :class:`yf.Ticker` and date window; optionally load dividends and/or ticker info."""
-        snap = YfTickerSnapshot(
-            snapshotDate=datetime.now().date(),
-            symbol=symbol,
-            sectorKey="",
-            industryKey="",
-            exDividendDateUtc=date(1900, 1, 1),
-            ticker=yf.Ticker(symbol),
-        )
-        if withDividends:
-            snap.with_dividends()
-        if withInfo:
-            snap.with_info()
-        return snap
 
     def dividend_sum_after_ex_date(self, symbols: list[str], ex_date: date) -> dict[str, float]:
         """Per-symbol sum of ``Dividends`` from the day after ``ex_date`` (missing columns → ``0.0``)."""

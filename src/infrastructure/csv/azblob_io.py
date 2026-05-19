@@ -11,7 +11,7 @@ from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from dotenv import load_dotenv
 
-from domain.iticker_snapshot import ITickerSnapshot
+from domain.ticker_snapshot import TickerSnapshot
 from infrastructure import _PROJECT_ROOT
 from infrastructure.csv.io import CsvFincolIo
 
@@ -61,6 +61,6 @@ class AzBlobCsvFincolIo(CsvFincolIo):
         super().write_dividend_history(body)
         self._sync_to_azure()
 
-    def write_tickers_to_cache(self, snapshots: list[ITickerSnapshot]) -> None:
+    def write_tickers_to_cache(self, snapshots: list[TickerSnapshot]) -> None:
         super().write_tickers_to_cache(snapshots)
         self._sync_to_azure()

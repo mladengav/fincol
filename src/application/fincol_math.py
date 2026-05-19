@@ -10,11 +10,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
-if TYPE_CHECKING:
-    from domain.iticker_snapshot import ITickerSnapshot
-
 TTM_NUM_PAYMENTS = 4
-
 
 def _get_price_on_or_after(df: pd.DataFrame, d: date) -> pd.Series:
     ts_index = pd.DatetimeIndex(pd.to_datetime(df.index))
@@ -28,15 +24,13 @@ def _get_price_on_or_before(df: pd.DataFrame, d: date) -> pd.Series:
     return df2.iloc[-1] if not df2.empty else df.iloc[-1]
 
 
-def compute_return_periods(snapshot: ITickerSnapshot, history_start: date) -> dict[str, dict[str, object]]:
-    """1d, 1m, YTD metrics using ``snapshot.hist`` and ``snapshot.divs``."""
+def compute_return_periods(symbol: str, divs: pd.Series, history: pd.DataFrame) -> dict[str, dict[str, object]]:
+    """1d, 1m, YTD metrics using ``snapshot.get_history`` and ``snapshot.divs``."""
+    if history.empty:
+        raise RuntimeError("No price data returned for " + symbol)
+
     today = datetime.now().date()
-    hist = snapshot.get_history(history_start, today)
 
-    if hist.empty:
-        raise RuntimeError("No price data returned for " + snapshot.symbol)
-
-    divs = snapshot.divs
     periods: dict[str, tuple[date, date]] = {
         "1d": (today - timedelta(days=1), today),
         "1m": (today - timedelta(days=30), today),
@@ -44,8 +38,8 @@ def compute_return_periods(snapshot: ITickerSnapshot, history_start: date) -> di
     }
     results: dict[str, dict[str, object]] = {}
     for name, (sdate, edate) in periods.items():
-        start_row = _get_price_on_or_after(hist, sdate)
-        end_row = _get_price_on_or_before(hist, edate)
+        start_row = _get_price_on_or_after(history, sdate)
+        end_row = _get_price_on_or_before(history, edate)
         div_idx = pd.DatetimeIndex(pd.to_datetime(divs.index))
         div_sum = divs[(div_idx.date >= sdate) & (div_idx.date <= edate)].sum()
         price_return = (end_row["Close"] - start_row["Close"]) / start_row["Close"]

@@ -11,7 +11,7 @@ import pandas as pd
 from application.debug_utils import debug_print_divs_structure
 from application.iyahoo_finance import IYahooFinance
 from domain.fincol_io import IFincolIo
-from domain.iticker_snapshot import ITickerSnapshot
+from domain.ticker_snapshot import TickerSnapshot
 
 
 @runtime_checkable
@@ -20,7 +20,7 @@ class IDividendLoader(Protocol):
 
     def retrieve_ticker_dividends(
         self, symbol: str, *, verbose: bool = False
-    ) -> ITickerSnapshot: ...
+    ) -> TickerSnapshot: ...
 
     def update_dividend_history(self, symbols: list[str]) -> None: ...
 
@@ -34,19 +34,20 @@ class DividendLoader:
 
     def retrieve_ticker_dividends(
         self, symbol: str, *, verbose: bool = False
-    ) -> ITickerSnapshot:
-        """``load_ticker`` + ``with_dividends``; print raw ex-dividend series (no price history)."""
-        snapshot = self.yahoo_finance.load_ticker(symbol, withDividends=True)
-        print(f"Dividends (ex-dates) for {snapshot.symbol}")
+    ) -> pd.Series:
+        """``load_ticker_dividends``; print raw ex-dividend series."""
+        # snapshot = self.yahoo_finance.load_ticker_info(symbol)
+        print(f"Dividends (ex-dates) for {symbol}")
+        divs = self.yahoo_finance.load_ticker_dividends(symbol)
         if verbose:
-            debug_print_divs_structure(snapshot.divs)
+            debug_print_divs_structure(divs)
         print(
-            snapshot.divs.to_string()
-            if not snapshot.divs.empty
+            divs.to_string()
+            if not divs.empty
             else "(no dividends in series)"
         )
 
-        return snapshot
+        return divs
 
     def update_dividend_history(self, symbols: list[str]) -> None:
         """Like :meth:`retrieve_ticker_dividends`, plus write update to fincol_io.
@@ -71,7 +72,7 @@ class DividendLoader:
         known_tickers_to_update = []
         by_ex_date: defaultdict[date, list[str]] = defaultdict(list)
         for kt in known_tickers:
-            by_ex_date[kt.exDividendDateUtc].append(kt.symbol)
+            by_ex_date[kt.exDividendDate].append(kt.symbol)
         for ex_date in sorted(by_ex_date):
             tickers = sorted(by_ex_date[ex_date])
             print(f"Ex-dividend date {ex_date}: {tickers}")
@@ -93,15 +94,15 @@ class DividendLoader:
 
         updated_snapshots = []
         for unknown_ticker in tickers_to_update:
-            updated_snapshots.append(self.yahoo_finance.load_ticker(unknown_ticker, withInfo=True))
+            updated_snapshots.append(self.yahoo_finance.load_ticker_info(unknown_ticker))
 
         self.fincol_io.write_tickers_to_cache(updated_snapshots)
 
         frames: list[pd.DataFrame] = []
         for symbol in tickers_to_update:
-            snapshot = self.retrieve_ticker_dividends(symbol)
+            divs = self.retrieve_ticker_dividends(symbol)
             frames.append(
-                self._dividends_to_history_frame(snapshot.symbol, snapshot.divs)
+                self._dividends_to_history_frame(symbol, divs)
             )
         
         new_df = pd.concat(frames, ignore_index=True)
