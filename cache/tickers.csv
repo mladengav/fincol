@@ -1,2 +1,3 @@
-snapshotDate,symbol,sectorKey,industryKey,exDividendDate,longName,currentPrice,dividendRate,dividendYield,marketCap,payoutRatio
-2026-05-15,TD.TO,financial-services,banks-diversified,1775692800,The Toronto-Dominion Bank,147.33,4.32,2.91,247039442944,0.3425
+snapshotDate,symbol,sectorKey,industryKey,industry,sector,exDividendDate,lastDividendDate,longName,regularMarketPrice,regularMarketTime,dividendRate,dividendYield,marketCap,payoutRatio,heldPercentInsiders,heldPercentInstitutions,quoteType,typeDisp
+2026-05-19,TD.TO,financial-services,banks-diversified,Banks - Diversified,Financial Services,1775692800,1775692800,The Toronto-Dominion Bank,148.38,1779220800,4.32,2.91,248800067584,0.3425,0.00044,0.55098,EQUITY,Equity
+2026-05-19,BNS.TO,financial-services,banks-diversified,Banks - Diversified,Financial Services,1775520000,1775520000,The Bank of Nova Scotia,106.33,1779220800,4.4,4.14,130938339328,0.6469,0.00021,0.50928,EQUITY,Equity
