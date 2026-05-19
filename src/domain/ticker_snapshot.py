@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Protocol, runtime_checkable
 
 import pandas as pd
 
 
-@runtime_checkable
-class ITickerSnapshot(Protocol):
+@dataclass
+class TickerSnapshot():
     """Bundle of symbol, date window, price history, and dividend series from Yahoo."""
 
     snapshotDate: date
@@ -24,6 +24,3 @@ class ITickerSnapshot(Protocol):
     dividendYield: float
     marketCap: int
     payoutRatio: float
-    divs: pd.Series
-
-    def get_history(self, history_start: date, end: date) -> ITickerSnapshot: ...

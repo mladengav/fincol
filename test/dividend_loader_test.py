@@ -20,7 +20,8 @@ import pytest
 
 from application.aggregation_updater import AggregationUpdater
 from application.dividend_loader import DividendLoader
-from domain.iticker_snapshot import ITickerSnapshot
+from application.iyahoo_finance import IYahooFinance
+from domain.ticker_snapshot import TickerSnapshot
 from infrastructure.csv import CsvFincolIo
 
 DIVIDEND_HISTORY_CSV = (
@@ -45,35 +46,7 @@ def _bns_dividends_series_from_csv(path: Path = BNS_DIVS_CSV) -> pd.Series:
     )
     return s.sort_index()
 
-
-@dataclass
-class FakeTickerSnapshot:
-    """Minimal :class:`~domain.iticker_snapshot.ITickerSnapshot` for tests (no ``yfinance`` ticker)."""
-
-    snapshotDate: date
-    symbol: str
-    sectorKey: str
-    industryKey: str
-    exDividendDateUtc: date
-    longName: str = ""
-    currentPrice: Decimal = Decimal("0.00")
-    dividendRate: Decimal = Decimal("0.00")
-    dividendYield: float = 0.0
-    marketCap: int = 0
-    payoutRatio: float = 0.0
-    divs: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
-
-    def with_dividends(self) -> ITickerSnapshot:
-        return self
-
-    def with_history(self) -> ITickerSnapshot:
-        return self
-
-    def with_info(self) -> ITickerSnapshot:
-        return self
-
-
-class CsvBackedYahooFinance:
+class CsvBackedYahooFinance(IYahooFinance):
     """Test :class:`~application.iyahoo_finance.IYahooFinance` using static ``bns_divs.csv`` dividends."""
 
     def __init__(self, csv_path: Path = BNS_DIVS_CSV) -> None:
@@ -86,24 +59,36 @@ class CsvBackedYahooFinance:
             self._history_start = date(2000, 1, 1)
             self._end = date.today()
 
-    def load_ticker(
+    def load_ticker_info(
         self,
-        symbol: str,
-        withDividends: bool = False,
-        withInfo: bool = False,
-    ) -> FakeTickerSnapshot:
-        snap = FakeTickerSnapshot(
+        symbol: str
+    ) -> TickerSnapshot:
+        snap = TickerSnapshot(
             snapshotDate=datetime.now().date(),
             symbol=symbol,
             sectorKey="",
             industryKey="",
-            exDividendDateUtc=date(1900, 1, 1)
+            exDividendDateUtc=date(1900, 1, 1),
+            longName="",
+            currentPrice=Decimal("0.00"),
+            dividendRate=Decimal("0.00"),
+            dividendYield=0.0,
+            marketCap=0,
+            payoutRatio=0.0,
         )
-        if withDividends:
-            snap.divs = self._template_divs.copy()
-        if withInfo:
-            snap.with_info()
         return snap
+
+    def load_ticker_dividends(
+        self,
+        symbol: str
+    ) -> pd.Series:
+        return self._template_divs.copy()
+
+    def load_ticker_history(
+        self,
+        symbol: str
+    ) -> pd.DataFrame:
+        return NotImplemented
 
     def dividend_sum_after_ex_date(self, symbols: list[str], ex_date: date) -> dict[str, float]:
         """Per-symbol sums from ``bns_divs.csv`` (fixture amounts apply only to ``BNS.TO``)."""

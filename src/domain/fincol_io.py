@@ -7,7 +7,7 @@ from typing import Protocol, runtime_checkable
 
 import pandas as pd
 
-from domain.iticker_snapshot import ITickerSnapshot
+from domain.ticker_snapshot import TickerSnapshot
 
 
 @runtime_checkable
@@ -23,9 +23,9 @@ class ISymbolLoader(Protocol):
 class IFincolIo(Protocol):
     """Read/write the CSV-backed dividend and TTM cache layout used by :mod:`fincol` and tools."""
 
-    def read_cached_tickers(self, ticker_symbols: list[str]) -> list[ITickerSnapshot]: ...
+    def read_cached_tickers(self, ticker_symbols: list[str]) -> list[TickerSnapshot]: ...
 
-    def write_tickers_to_cache(self, snapshots: list[ITickerSnapshot]) -> None: ...
+    def write_tickers_to_cache(self, snapshots: list[TickerSnapshot]) -> None: ...
 
     def read_ttm_income(self) -> dict[str, float]: ...
 

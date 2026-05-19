@@ -7,17 +7,35 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-import yfinance as yf
-
+from domain.ticker_snapshot import TickerSnapshot
 from infrastructure.csv import CsvFincolIo
-from infrastructure.yfinance_client import YfTickerSnapshot
 
 _TESTCACHE = Path(__file__).resolve().parent / "testcache"
 _TICKERS_FIXTURE = _TESTCACHE / "tickers.csv"
 
+def _default_ticker_snapshot(
+    snapshotDate: date,
+    symbol: str,
+    sectorKey: str,
+    industryKey: str,
+    exDividendDateUtc: date) -> TickerSnapshot:
+
+    return TickerSnapshot(
+        snapshotDate=snapshotDate,
+        symbol=symbol,
+        sectorKey=sectorKey,
+        industryKey=industryKey,
+        exDividendDateUtc=exDividendDateUtc,
+        longName="",
+        currentPrice=Decimal("0.00"),
+        dividendRate=Decimal("0.00"),
+        dividendYield=0.0,
+        marketCap=0,
+        payoutRatio=0.0,
+    )
 
 def test_read_cached_tickers_from_testcache_fixture() -> None:
-    """``read_cached_tickers`` maps ``testcache/tickers.csv`` rows onto :class:`~infrastructure.yfinance_client.YfTickerSnapshot` fields."""
+    """``read_cached_tickers`` maps ``testcache/tickers.csv`` rows onto :class:`~domain.ticker_snapshot.TickerSnapshot` fields."""
     assert _TICKERS_FIXTURE.is_file(), f"missing fixture: {_TICKERS_FIXTURE}"
 
     fincol_io = CsvFincolIo(_TESTCACHE)
@@ -70,13 +88,12 @@ def test_write_tickers_to_cache_creates_minimal_csv(tmp_path: Path) -> None:
     """When ``tickers.csv`` is missing, write uses default headers and can be read back."""
     cache = tmp_path / "cache"
     io = CsvFincolIo(cache)
-    snap = YfTickerSnapshot(
+    snap = _default_ticker_snapshot(
         snapshotDate=date(2024, 1, 2),
         symbol="ZZ.TO",
         sectorKey="sk",
         industryKey="ik",
-        exDividendDateUtc=date(2024, 3, 4),
-        ticker=yf.Ticker("ZZ.TO"),
+        exDividendDateUtc=date(2024, 3, 4)
     )
     io.write_tickers_to_cache([snap])
 
@@ -103,13 +120,12 @@ def test_write_tickers_to_cache_merges_new_symbol_without_dropping_existing(
 
     io = CsvFincolIo(cache)
     ry = io.read_cached_tickers(["RY.TO"])[0]
-    other = YfTickerSnapshot(
+    other = _default_ticker_snapshot(
         snapshotDate=date(2024, 6, 1),
         symbol="OTHER.TO",
         sectorKey="x",
         industryKey="y",
-        exDividendDateUtc=date(2024, 6, 15),
-        ticker=yf.Ticker("OTHER.TO"),
+        exDividendDateUtc=date(2024, 6, 15)
     )
     io.write_tickers_to_cache([other])
 
@@ -132,25 +148,23 @@ def test_write_tickers_to_cache_update_one_symbol_leaves_others(tmp_path: Path) 
     io = CsvFincolIo(cache)
     io.write_tickers_to_cache(
         [
-            YfTickerSnapshot(
+            _default_ticker_snapshot(
                 snapshotDate=date(2024, 6, 1),
                 symbol="OTHER.TO",
                 sectorKey="keep-me",
                 industryKey="y",
-                exDividendDateUtc=date(2024, 6, 15),
-                ticker=yf.Ticker("OTHER.TO"),
+                exDividendDateUtc=date(2024, 6, 15)
             )
         ]
     )
     io.write_tickers_to_cache(
         [
-            YfTickerSnapshot(
+            _default_ticker_snapshot(
                 snapshotDate=date(2025, 1, 1),
                 symbol="RY.TO",
                 sectorKey="updated",
                 industryKey="updated-ik",
-                exDividendDateUtc=date(2025, 2, 2),
-                ticker=yf.Ticker("RY.TO"),
+                exDividendDateUtc=date(2025, 2, 2)
             )
         ]
     )

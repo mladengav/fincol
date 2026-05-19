@@ -10,10 +10,12 @@ from infrastructure.yfinance_client import YahooFinance
 
 def run_fetch_and_compute(symbol: str) -> dict[str, dict[str, object]]:
     """Load dividends/history and compute 1d, 1m, and YTD returns."""
-    snapshot = YahooFinance().load_ticker(symbol).with_dividends()
+    divs = YahooFinance().load_ticker_dividends(symbol)
 
     today = datetime.now().date()
-    return fm.compute_return_periods(snapshot, history_start=today- timedelta(days=365))
+    history = YahooFinance().load_ticker_history(symbol, history_start=today- timedelta(days=365), end=today)
+
+    return fm.compute_return_periods(symbol, divs, history)
 
 
 def print_return_report(results: dict[str, dict[str, object]]) -> None:
