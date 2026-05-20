@@ -31,7 +31,7 @@ def aggregated_bns_cache_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     fincol_io = CsvFincolIo(tmp_folder)
     dividend_loader = DividendLoader(CsvBackedYahooFinance(), fincol_io)
     dividend_loader.update_dividend_history([BNS_TO_TICKER])
-    AggregationUpdater(fincol_io).update_aggregations()
+    AggregationUpdater(fincol_io).update_aggregations([BNS_TO_TICKER])
     return tmp_folder
 
 
@@ -116,7 +116,7 @@ def test_bce_last_dividend_decrease_uses_latest_cut_date(tmp_path: Path) -> None
 
     fincol_io = CsvFincolIo(tmp_path)
     fincol_io.write_dividend_history(bce)
-    AggregationUpdater(fincol_io).update_aggregations()
+    AggregationUpdater(fincol_io).update_aggregations([BCE_TO_TICKER])
 
     result = fincol_io.read_last_dividend_decrease()
 
@@ -135,7 +135,7 @@ def test_bns_dividends_by_year_2025_matches_expected(tmp_path: Path) -> None:
 
     fincol_io = CsvFincolIo(tmp_path)
     fincol_io.write_dividend_history(bns)
-    AggregationUpdater(fincol_io).update_aggregations()
+    AggregationUpdater(fincol_io).update_aggregations([BNS_TO_TICKER])
 
     path = tmp_path / "aggregations" / "dividends_by_year.csv"
     assert path.is_file(), f"Expected {path} after aggregation update"
@@ -178,7 +178,7 @@ def test_bce_years_since_dividend_decrease_matches_expected(tmp_path: Path) -> N
 
     fincol_io = CsvFincolIo(tmp_path)
     fincol_io.write_dividend_history(bce)
-    AggregationUpdater(fincol_io).update_aggregations()
+    AggregationUpdater(fincol_io).update_aggregations([BCE_TO_TICKER])
 
     result = fincol_io.read_years_since_dividend_decrease()
 
@@ -204,7 +204,7 @@ def test_bns_years_consecutive_dividend_increase_matches_expected(tmp_path: Path
 
     fincol_io = CsvFincolIo(tmp_path)
     fincol_io.write_dividend_history(bns)
-    AggregationUpdater(fincol_io).update_aggregations()
+    AggregationUpdater(fincol_io).update_aggregations([BNS_TO_TICKER])
 
     result = fincol_io.read_years_consecutive_dividend_increase()
 
@@ -222,7 +222,7 @@ def test_bce_years_consecutive_dividend_increase_matches_expected(tmp_path: Path
 
     fincol_io = CsvFincolIo(tmp_path)
     fincol_io.write_dividend_history(bce)
-    AggregationUpdater(fincol_io).update_aggregations()
+    AggregationUpdater(fincol_io).update_aggregations([BCE_TO_TICKER])
 
     result = fincol_io.read_years_consecutive_dividend_increase()
 

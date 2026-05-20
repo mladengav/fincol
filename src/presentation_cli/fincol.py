@@ -109,14 +109,14 @@ def main() -> int:
                 dividend_loader.retrieve_ticker_dividends(sym, verbose=args.verbose)
             return 0
         dividend_loader.update_dividend_history(symbols)
-        aggregation_updater.update_aggregations()
+        aggregation_updater.update_aggregations(symbols)
         return 0
     if args.command == "raw_div":
         dividend_loader.retrieve_ticker_dividends(args.symbol, verbose=args.verbose)
         return 0
     if args.command == "load_dividend_history":
         dividend_loader.update_dividend_history([args.symbol])
-        aggregation_updater.update_aggregations()
+        aggregation_updater.update_aggregations([args.symbol])
         return 0
     raise SystemExit(f"Unsupported command: {args.command}")
 

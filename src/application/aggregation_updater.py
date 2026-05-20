@@ -14,7 +14,7 @@ from domain.fincol_io import IFincolIo
 class IAggregationUpdater(Protocol):
     """Updates derived aggregations via :class:`IFincolIo`."""
 
-    def update_aggregations(self) -> None: ...
+    def update_aggregations(self, symbols: list[str]) -> None: ...
 
 
 class AggregationUpdater:
@@ -23,8 +23,12 @@ class AggregationUpdater:
     def __init__(self, fincol_io: IFincolIo) -> None:
         self.fincol_io = fincol_io
 
-    def update_aggregations(self) -> None:
-        """Update all aggregations via ``fincol_io``."""
+    def update_aggregations(self, symbols: list[str]) -> None:
+        """Update aggregations for ``symbols`` via ``fincol_io``.
+
+        ``symbols`` is not yet used to limit work; callers must pass the tickers
+        that were updated so partial recomputation can be added later.
+        """
         self._update_ttm_dividend()
         self._update_dividends_by_year()
         last_decrease_by_ticker = self._update_last_dividend_decrease()
