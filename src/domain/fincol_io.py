@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import date
 from typing import Protocol, runtime_checkable
 
 import pandas as pd
@@ -30,6 +31,28 @@ class IFincolIo(Protocol):
     def read_ttm_income(self) -> dict[str, float]: ...
 
     def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None: ...
+
+    def read_last_dividend_decrease(self) -> dict[str, date]: ...
+
+    def write_last_dividend_decrease(
+        self, last_decrease_by_ticker: Mapping[str, date]
+    ) -> None: ...
+
+    def read_years_since_dividend_decrease(self) -> dict[str, int]: ...
+
+    def write_years_since_dividend_decrease(
+        self, years_since_by_ticker: Mapping[str, int]
+    ) -> None: ...
+
+    def read_dividends_by_year(self) -> pd.DataFrame: ...
+
+    def write_dividends_by_year(self, dividends_by_year: pd.DataFrame) -> None: ...
+
+    def read_years_consecutive_dividend_increase(self) -> dict[str, int]: ...
+
+    def write_years_consecutive_dividend_increase(
+        self, years_consecutive_by_ticker: Mapping[str, int]
+    ) -> None: ...
 
     def read_dividend_history(self) -> pd.DataFrame: ...
 

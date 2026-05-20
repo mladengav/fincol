@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -36,18 +37,20 @@ class AzBlobCsvFincolIo(CsvFincolIo):
         self._sync_from_azure()
 
     def _sync_from_azure(self) -> None:
+        """Download blobs into the local cache, preserving subpaths (e.g. ``aggregations/ttm_income.csv``)."""
         for blob in self._container_client.list_blobs():
-            target = self._folder / blob.name
+            target = self._folder.joinpath(*Path(blob.name).parts)
             target.parent.mkdir(parents=True, exist_ok=True)
             with target.open("wb") as f:
                 download_stream = self._container_client.download_blob(blob.name)
                 f.write(download_stream.readall())
 
     def _sync_to_azure(self) -> None:
+        """Upload every file under the cache folder, including nested paths."""
         for path in self._folder.rglob("*"):
             if not path.is_file():
                 continue
-            blob_name = str(path.relative_to(self._folder)).replace("\\", "/")
+            blob_name = path.relative_to(self._folder).as_posix()
             with path.open("rb") as data:
                 self._container_client.upload_blob(
                     name=blob_name, data=data, overwrite=True
@@ -55,6 +58,28 @@ class AzBlobCsvFincolIo(CsvFincolIo):
 
     def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None:
         super().write_ttm_income(ttm_by_ticker)
+        self._sync_to_azure()
+
+    def write_last_dividend_decrease(
+        self, last_decrease_by_ticker: Mapping[str, date]
+    ) -> None:
+        super().write_last_dividend_decrease(last_decrease_by_ticker)
+        self._sync_to_azure()
+
+    def write_years_since_dividend_decrease(
+        self, years_since_by_ticker: Mapping[str, int]
+    ) -> None:
+        super().write_years_since_dividend_decrease(years_since_by_ticker)
+        self._sync_to_azure()
+
+    def write_dividends_by_year(self, dividends_by_year: pd.DataFrame) -> None:
+        super().write_dividends_by_year(dividends_by_year)
+        self._sync_to_azure()
+
+    def write_years_consecutive_dividend_increase(
+        self, years_consecutive_by_ticker: Mapping[str, int]
+    ) -> None:
+        super().write_years_consecutive_dividend_increase(years_consecutive_by_ticker)
         self._sync_to_azure()
 
     def write_dividend_history(self, body: pd.DataFrame) -> None:

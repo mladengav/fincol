@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 import pandas as pd
@@ -17,10 +17,18 @@ class TickerSnapshot():
     symbol: str
     sectorKey: str
     industryKey: str
+    industry: str
+    sector: str
     exDividendDate: date
+    lastDividendDate: date
     longName: str
-    currentPrice: Decimal
+    regularMarketPrice: Decimal
+    regularMarketTime: datetime
     dividendRate: Decimal
     dividendYield: float
     marketCap: int
     payoutRatio: float
+    heldPercentInsiders: float
+    heldPercentInstitutions: float
+    quoteType: str
+    typeDisp: str

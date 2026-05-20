@@ -67,13 +67,21 @@ class YahooFinance:
             symbol=symbol,
             sectorKey=str(info.get("sectorKey") or ""),
             industryKey=str(info.get("industryKey") or ""),
+            industry=str(info.get("industry") or ""),
+            sector=str(info.get("sector") or ""),
             exDividendDate=info["exDividendDate"],
+            lastDividendDate=info.get("lastDividendDate"),
             longName=str(info.get("longName") or ""),
-            currentPrice=_decimal_from_info(info.get("currentPrice")),
+            regularMarketPrice=_decimal_from_info(info.get("regularMarketPrice")),
+            regularMarketTime=info.get("regularMarketTime"),
             dividendRate=_decimal_from_info(info.get("dividendRate")),
             dividendYield=float(info.get("dividendYield") or 0.0),
             marketCap=int(info.get("marketCap") or 0),
             payoutRatio=float(info.get("payoutRatio") or 0.0),
+            heldPercentInsiders=float(info.get("heldPercentInsiders") or 0.0),
+            heldPercentInstitutions=float(info.get("heldPercentInstitutions") or 0.0),
+            quoteType=str(info.get("quoteType") or ""),
+            typeDisp=str(info.get("typeDisp") or ""),
         )
 
         return snap
