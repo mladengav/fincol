@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Protocol, runtime_checkable
 
 import pandas as pd
@@ -70,18 +70,18 @@ class DividendLoader:
         print(f"Unknown tickers: {unknown_tickers}")
 
         known_tickers_to_update = []
-        by_ex_date: defaultdict[date, list[str]] = defaultdict(list)
+        by_last_dividend_date: defaultdict[date, list[str]] = defaultdict(list)
         for kt in known_tickers:
-            by_ex_date[kt.exDividendDate].append(kt.symbol)
-        for ex_date in sorted(by_ex_date):
-            tickers = sorted(by_ex_date[ex_date])
-            print(f"Ex-dividend date {ex_date}: {tickers}")
+            by_last_dividend_date[kt.lastDividendDate].append(kt.symbol)
+        for last_dividend_date in sorted(by_last_dividend_date):
+            tickers = sorted(by_last_dividend_date[last_dividend_date])
+            print(f"Last dividend date {last_dividend_date}: {tickers}")
 
-            if (ex_date > datetime.now().date() - timedelta(days=1)):
-                print(f"Ex-dividend date {ex_date} must be at least 1 day in the past, skipping")
+            if last_dividend_date >= datetime.now().date():
+                print(f"Last dividend date {last_dividend_date} must be at least 1 day in the past, skipping")
                 continue
 
-            tickers_to_update = self._filter_for_new_dividend_events(tickers, ex_date)
+            tickers_to_update = self._filter_for_new_dividend_events(tickers, last_dividend_date)
             known_tickers_to_update.extend(tickers_to_update)
 
         print(f"Known tickers to update: {known_tickers_to_update}")
