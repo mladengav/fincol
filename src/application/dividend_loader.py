@@ -55,51 +55,51 @@ class DividendLoader:
         Loads data per ticker, concatenates new rows, then reads/writes cache once.
         Input symbols are deduplicated (first occurrence wins) before fetch.
         """
-        unique = list(dict.fromkeys(symbols))
+        unique = list[str](dict.fromkeys(symbols))
         if not unique:
             return
         
-        print(f"Updating dividend history for tickers: {unique}")
+        print(f"Updating dividend history for symbols: {unique}")
 
         known_tickers = self.fincol_io.read_cached_tickers(unique)
-        print(f"Known tickers: {[t.symbol for t in known_tickers]}")
+        print(f"Known symbols: {[t.symbol for t in known_tickers]}")
 
         known_symbols = {t.symbol for t in known_tickers}
 
-        unknown_tickers = [t for t in unique if t not in known_symbols]
-        print(f"Unknown tickers: {unknown_tickers}")
+        unknown_symbols = [t for t in unique if t not in known_symbols]
+        print(f"Unknown symbols: {unknown_symbols}")
 
-        known_tickers_to_update = []
+        known_symbols_to_update = []
         by_last_dividend_date: defaultdict[date, list[str]] = defaultdict(list)
         for kt in known_tickers:
             by_last_dividend_date[kt.lastDividendDate].append(kt.symbol)
         for last_dividend_date in sorted(by_last_dividend_date):
-            tickers = sorted(by_last_dividend_date[last_dividend_date])
-            print(f"Last dividend date {last_dividend_date}: {tickers}")
+            symbols = sorted(by_last_dividend_date[last_dividend_date])
+            print(f"Last dividend date {last_dividend_date}: {symbols}")
 
             if last_dividend_date >= datetime.now().date():
                 print(f"Last dividend date {last_dividend_date} must be at least 1 day in the past, skipping")
                 continue
 
-            tickers_to_update = self._filter_for_new_dividend_events(tickers, last_dividend_date)
-            known_tickers_to_update.extend(tickers_to_update)
+            symbols_to_update = self._filter_for_new_dividend_events(symbols, last_dividend_date)
+            known_symbols_to_update.extend(symbols_to_update)
 
-        print(f"Known tickers to update: {known_tickers_to_update}")
-        tickers_to_update = list(set(known_tickers_to_update + unknown_tickers))
-        print(f"Tickers to update: {tickers_to_update}")
+        print(f"Known tickers to update: {known_symbols_to_update}")
+        symbols_to_update = list(set(known_symbols_to_update + unknown_symbols))
+        print(f"Symbols to update: {symbols_to_update}")
 
-        if not tickers_to_update:
-            print("No tickers to update")
+        if not symbols_to_update:
+            print("No symbols to update")
             return
 
         updated_snapshots = []
-        for unknown_ticker in tickers_to_update:
-            updated_snapshots.append(self.yahoo_finance.load_ticker_info(unknown_ticker))
+        for symbol_to_update in symbols_to_update:
+            updated_snapshots.append(self.yahoo_finance.load_ticker_info(symbol_to_update))
 
         self.fincol_io.write_tickers_to_cache(updated_snapshots)
 
         frames: list[pd.DataFrame] = []
-        for symbol in tickers_to_update:
+        for symbol in symbols_to_update:
             divs = self.retrieve_ticker_dividends(symbol)
             frames.append(
                 self._dividends_to_history_frame(symbol, divs)
@@ -112,7 +112,7 @@ class DividendLoader:
 
         z_filtered = x_retrieved - rows_added
 
-        ticker_note = tickers_to_update[0] if len(tickers_to_update) == 1 else f"{len(tickers_to_update)} ticker(s)"
+        ticker_note = symbols_to_update[0] if len(symbols_to_update) == 1 else f"{len(symbols_to_update)} ticker(s)"
         print(
             f"{x_retrieved} rows retrieved ({ticker_note}), "
             f"{rows_added} rows added, {z_filtered} duplicate rows filtered out"

@@ -69,7 +69,7 @@ class YahooFinance:
             industryKey=str(info.get("industryKey") or ""),
             industry=str(info.get("industry") or ""),
             sector=str(info.get("sector") or ""),
-            exDividendDate=info["exDividendDate"],
+            exDividendDate=info.get("exDividendDate", ""),
             lastDividendDate=info.get("lastDividendDate"),
             longName=str(info.get("longName") or ""),
             regularMarketPrice=_decimal_from_info(info.get("regularMarketPrice")),
