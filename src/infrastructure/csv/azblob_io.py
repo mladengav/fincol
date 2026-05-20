@@ -66,6 +66,22 @@ class AzBlobCsvFincolIo(CsvFincolIo):
         super().write_last_dividend_decrease(last_decrease_by_ticker)
         self._sync_to_azure()
 
+    def write_years_since_dividend_decrease(
+        self, years_since_by_ticker: Mapping[str, int]
+    ) -> None:
+        super().write_years_since_dividend_decrease(years_since_by_ticker)
+        self._sync_to_azure()
+
+    def write_dividends_by_year(self, dividends_by_year: pd.DataFrame) -> None:
+        super().write_dividends_by_year(dividends_by_year)
+        self._sync_to_azure()
+
+    def write_years_consecutive_dividend_increase(
+        self, years_consecutive_by_ticker: Mapping[str, int]
+    ) -> None:
+        super().write_years_consecutive_dividend_increase(years_consecutive_by_ticker)
+        self._sync_to_azure()
+
     def write_dividend_history(self, body: pd.DataFrame) -> None:
         super().write_dividend_history(body)
         self._sync_to_azure()

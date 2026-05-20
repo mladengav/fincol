@@ -125,6 +125,13 @@ class CsvFincolIo(IFincolIo):
     _LAST_DIVIDEND_DECREASE_CSV = (
         Path(_AGGREGATIONS_SUBDIR) / "last_dividend_decrease.csv"
     )
+    _YEARS_SINCE_DIVIDEND_DECREASE_CSV = (
+        Path(_AGGREGATIONS_SUBDIR) / "years_since_dividend_decrease.csv"
+    )
+    _DIVIDENDS_BY_YEAR_CSV = Path(_AGGREGATIONS_SUBDIR) / "dividends_by_year.csv"
+    _YEARS_CONSECUTIVE_DIVIDEND_INCREASE_CSV = (
+        Path(_AGGREGATIONS_SUBDIR) / "years_consecutive_dividend_increase.csv"
+    )
     _DIVIDEND_HISTORY_CSV = "dividend_history.csv"
 
     def __init__(self, folder: Path | None = None) -> None:
@@ -322,6 +329,151 @@ class CsvFincolIo(IFincolIo):
             for ticker in sorted(last_decrease_by_ticker):
                 d = last_decrease_by_ticker[ticker]
                 f.write(f'"{ticker}","{d.isoformat()}"\n')
+
+    def read_years_since_dividend_decrease(self) -> dict[str, int]:
+        path = self._folder / self._YEARS_SINCE_DIVIDEND_DECREASE_CSV
+
+        if not (path.exists() and path.stat().st_size > 0):
+            return {}
+
+        with path.open("r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            missing = {"ticker", "years_since_dividend_decrease"} - set(
+                reader.fieldnames or []
+            )
+            if missing:
+                raise ValueError(
+                    f"{path}: missing required column(s): {sorted(missing)}"
+                )
+            result: dict[str, int] = {}
+            for i, row in enumerate(reader, start=2):
+                ticker = row.get("ticker")
+                value = row.get("years_since_dividend_decrease")
+                if not ticker:
+                    raise ValueError(f"{path}:{i}: empty ticker")
+                if value in (None, ""):
+                    years = 0
+                else:
+                    try:
+                        years = int(float(cast(str, value)))
+                    except (TypeError, ValueError) as e:
+                        raise ValueError(
+                            f"{path}:{i}: bad years_since_dividend_decrease "
+                            f"value {value!r} for {ticker!r}"
+                        ) from e
+                result[str(ticker)] = years
+        return result
+
+    def write_years_since_dividend_decrease(
+        self, years_since_by_ticker: Mapping[str, int]
+    ) -> None:
+        path = self._folder / self._YEARS_SINCE_DIVIDEND_DECREASE_CSV
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as f:
+            f.write('"ticker","years_since_dividend_decrease"\n')
+            for ticker in sorted(years_since_by_ticker):
+                f.write(f'"{ticker}",{int(years_since_by_ticker[ticker])}\n')
+
+    def read_years_consecutive_dividend_increase(self) -> dict[str, int]:
+        path = self._folder / self._YEARS_CONSECUTIVE_DIVIDEND_INCREASE_CSV
+
+        if not (path.exists() and path.stat().st_size > 0):
+            return {}
+
+        with path.open("r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            missing = {"ticker", "years_consecutive_dividend_increase"} - set(
+                reader.fieldnames or []
+            )
+            if missing:
+                raise ValueError(
+                    f"{path}: missing required column(s): {sorted(missing)}"
+                )
+            result: dict[str, int] = {}
+            for i, row in enumerate(reader, start=2):
+                ticker = row.get("ticker")
+                value = row.get("years_consecutive_dividend_increase")
+                if not ticker:
+                    raise ValueError(f"{path}:{i}: empty ticker")
+                if value in (None, ""):
+                    years = 0
+                else:
+                    try:
+                        years = int(float(cast(str, value)))
+                    except (TypeError, ValueError) as e:
+                        raise ValueError(
+                            f"{path}:{i}: bad years_consecutive_dividend_increase "
+                            f"value {value!r} for {ticker!r}"
+                        ) from e
+                result[str(ticker)] = years
+        return result
+
+    def write_years_consecutive_dividend_increase(
+        self, years_consecutive_by_ticker: Mapping[str, int]
+    ) -> None:
+        path = self._folder / self._YEARS_CONSECUTIVE_DIVIDEND_INCREASE_CSV
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as f:
+            f.write('"ticker","years_consecutive_dividend_increase"\n')
+            for ticker in sorted(years_consecutive_by_ticker):
+                f.write(
+                    f'"{ticker}",{int(years_consecutive_by_ticker[ticker])}\n'
+                )
+
+    def read_dividends_by_year(self) -> pd.DataFrame:
+        path = self._folder / self._DIVIDENDS_BY_YEAR_CSV
+        empty = pd.DataFrame(columns=["symbol", "year", "dividend"])
+
+        if not (path.exists() and path.stat().st_size > 0):
+            return empty
+
+        with path.open("r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            missing = {"symbol", "year", "dividend"} - set(reader.fieldnames or [])
+            if missing:
+                raise ValueError(
+                    f"{path}: missing required column(s): {sorted(missing)}"
+                )
+            rows: list[dict[str, str | int | float]] = []
+            for i, row in enumerate(reader, start=2):
+                symbol = row.get("symbol")
+                year_raw = row.get("year")
+                dividend_raw = row.get("dividend")
+                if not symbol:
+                    raise ValueError(f"{path}:{i}: empty symbol")
+                if year_raw in (None, ""):
+                    raise ValueError(f"{path}:{i}: empty year for {symbol!r}")
+                if dividend_raw in (None, ""):
+                    dividend = 0.0
+                else:
+                    try:
+                        dividend = float(cast(str, dividend_raw))
+                    except (TypeError, ValueError) as e:
+                        raise ValueError(
+                            f"{path}:{i}: bad dividend value {dividend_raw!r} for {symbol!r}"
+                        ) from e
+                try:
+                    year = int(float(cast(str, year_raw)))
+                except (TypeError, ValueError) as e:
+                    raise ValueError(
+                        f"{path}:{i}: bad year value {year_raw!r} for {symbol!r}"
+                    ) from e
+                rows.append({"symbol": str(symbol), "year": year, "dividend": dividend})
+        return pd.DataFrame(rows)
+
+    def write_dividends_by_year(self, dividends_by_year: pd.DataFrame) -> None:
+        path = self._folder / self._DIVIDENDS_BY_YEAR_CSV
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8", newline="") as f:
+            f.write('"symbol","year","dividend"\n')
+            for _, row in dividends_by_year.iterrows():
+                f.write(
+                    f'"{row["symbol"]}",{int(row["year"])},'
+                    f'{float(row["dividend"]):.4f}\n'
+                )
 
     def read_dividend_history(self) -> pd.DataFrame:
         path = self._folder / self._DIVIDEND_HISTORY_CSV
