@@ -1,4 +1,5 @@
 """CLI entry for period return computation via yfinance snapshots."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,7 +14,9 @@ def run_fetch_and_compute(symbol: str) -> dict[str, dict[str, object]]:
     divs = YahooFinance().load_ticker_dividends(symbol)
 
     today = datetime.now().date()
-    history = YahooFinance().load_ticker_history(symbol, history_start=today- timedelta(days=365), end=today)
+    history = YahooFinance().load_ticker_history(
+        symbol, history_start=today - timedelta(days=365), end=today
+    )
 
     return fm.compute_return_periods(symbol, divs, history)
 
@@ -22,7 +25,9 @@ def print_return_report(results: dict[str, dict[str, object]]) -> None:
     """Print period return metrics in a human-readable block per period."""
     for period, vals in results.items():
         print(f"{period}: start {vals['start_date']} -> end {vals['end_date']}")
-        print(f"  Start Close: {vals['start_close']:.2f}, End Close: {vals['end_close']:.2f}")
+        print(
+            f"  Start Close: {vals['start_close']:.2f}, End Close: {vals['end_close']:.2f}"
+        )
         print(f"  Dividends in period: {vals['dividends']:.4f}")
         print(f"  Price return: {vals['price_return']:.2%}")
         print(f"  Total return (price + dividends): {vals['total_return']:.2%}")
