@@ -23,6 +23,7 @@ def _decimal_from_info(value: Any) -> Decimal:
         return _EMPTY_DECIMAL
     return Decimal(str(value))
 
+
 def _sleep_before_yf() -> None:
     """Pause before yfinance network calls; delay and jitter max from env when set."""
     raw_delay = os.environ.get("FINCOL_YF_DELAY_SECONDS")
@@ -52,13 +53,11 @@ def _history_dividends_slice(df: pd.DataFrame) -> pd.DataFrame | pd.Series | Non
         return df["Dividends"]
     return None
 
+
 class YahooFinance:
     """Yahoo Finance client backed by ``yfinance``; implements :class:`~application.iyahoo_finance.IYahooFinance`."""
 
-    def load_ticker_info(
-        self,
-        symbol: str
-    ) -> TickerSnapshot:
+    def load_ticker_info(self, symbol: str) -> TickerSnapshot:
         """Create a yfinance :class:`yf.Ticker` and date window; optionally load dividends and/or ticker info."""
         info = yf.Ticker(symbol).info
 
@@ -90,18 +89,21 @@ class YahooFinance:
         """Fetch ex-dividend series from the bound ticker."""
         return yf.Ticker(symbol).dividends
 
-
-    def load_ticker_history(self, symbol: str,history_start: date, end: date) -> pd.DataFrame:
+    def load_ticker_history(
+        self, symbol: str, history_start: date, end: date
+    ) -> pd.DataFrame:
         """Fetch daily event history for the given date window (``auto_adjust=False``)."""
         hist = yf.Ticker(symbol).history(
-            start = history_start.isoformat(),
-            end= (end + timedelta(days=1)).isoformat(),
+            start=history_start.isoformat(),
+            end=(end + timedelta(days=1)).isoformat(),
             interval="1d",
-            auto_adjust=False
+            auto_adjust=False,
         )
         return hist
 
-    def dividend_sum_after_ex_date(self, symbols: list[str], ex_date: date) -> dict[str, float]:
+    def dividend_sum_after_ex_date(
+        self, symbols: list[str], ex_date: date
+    ) -> dict[str, float]:
         """Per-symbol sum of ``Dividends`` from the day after ``ex_date`` (missing columns → ``0.0``)."""
         if not symbols:
             return {}

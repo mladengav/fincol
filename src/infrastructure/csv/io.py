@@ -17,6 +17,7 @@ from domain.fincol_io import IFincolIo
 from domain.ticker_snapshot import TickerSnapshot
 from infrastructure import _PROJECT_ROOT
 
+
 def _parse_date_cell(raw: str) -> date:
     """Parse ISO ``YYYY-MM-DD`` or Unix epoch seconds from a CSV cell into a :class:`~datetime.date`."""
     s = raw.strip()
@@ -32,7 +33,7 @@ def _parse_date_cell(raw: str) -> date:
         if ts > 1e12:
             ts /= 1000.0
         return datetime.fromtimestamp(ts, tz=UTC).date()
-    except (ValueError, OSError, OverflowError):
+    except ValueError, OSError, OverflowError:
         return date(1900, 1, 1)
 
 
@@ -51,14 +52,12 @@ def _parse_datetime_cell(raw: str) -> datetime:
         if ts > 1e12:
             ts /= 1000.0
         return datetime.fromtimestamp(ts, tz=UTC)
-    except (ValueError, OSError, OverflowError):
+    except ValueError, OSError, OverflowError:
         return datetime(1900, 1, 1, tzinfo=UTC)
 
 
 _EMPTY_DECIMAL = Decimal("0.00")
-_TICKER_SNAPSHOT_CSV_ATTRS = frozenset(
-    f.name for f in fields(TickerSnapshot)
-)
+_TICKER_SNAPSHOT_CSV_ATTRS = frozenset(f.name for f in fields(TickerSnapshot))
 
 
 def _parse_decimal_cell(raw: str) -> Decimal:
@@ -301,7 +300,9 @@ class CsvFincolIo(IFincolIo):
 
         with path.open("r", encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
-            missing = {"ticker", "last_dividend_decrease"} - set(reader.fieldnames or [])
+            missing = {"ticker", "last_dividend_decrease"} - set(
+                reader.fieldnames or []
+            )
             if missing:
                 raise ValueError(
                     f"{path}: missing required column(s): {sorted(missing)}"
@@ -418,9 +419,7 @@ class CsvFincolIo(IFincolIo):
         with path.open("w", encoding="utf-8", newline="") as f:
             f.write('"ticker","years_consecutive_dividend_increase"\n')
             for ticker in sorted(years_consecutive_by_ticker):
-                f.write(
-                    f'"{ticker}",{int(years_consecutive_by_ticker[ticker])}\n'
-                )
+                f.write(f'"{ticker}",{int(years_consecutive_by_ticker[ticker])}\n')
 
     def read_dividends_by_year(self) -> pd.DataFrame:
         path = self._folder / self._DIVIDENDS_BY_YEAR_CSV

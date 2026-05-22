@@ -24,7 +24,9 @@ class ISymbolLoader(Protocol):
 class IFincolIo(Protocol):
     """Read/write the CSV-backed dividend and TTM cache layout used by :mod:`fincol` and tools."""
 
-    def read_cached_tickers(self, ticker_symbols: list[str]) -> list[TickerSnapshot]: ...
+    def read_cached_tickers(
+        self, ticker_symbols: list[str]
+    ) -> list[TickerSnapshot]: ...
 
     def write_tickers_to_cache(self, snapshots: list[TickerSnapshot]) -> None: ...
 

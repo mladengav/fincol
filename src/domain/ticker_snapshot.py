@@ -10,7 +10,7 @@ import pandas as pd
 
 
 @dataclass
-class TickerSnapshot():
+class TickerSnapshot:
     """Bundle of symbol, data from Yahoo."""
 
     snapshotDate: date
@@ -24,8 +24,12 @@ class TickerSnapshot():
     longName: str
     regularMarketPrice: Decimal
     regularMarketTime: datetime
+
+    # TODO remove and use lastDividendValue instead, with yield calculated from price
+    # TODO or possibly keep them but treat as announcedDivRate/announcedDivYield
     dividendRate: Decimal
     dividendYield: float
+
     marketCap: int
     payoutRatio: float
     heldPercentInsiders: float
