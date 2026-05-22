@@ -7,11 +7,12 @@ import random
 import time
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from domain.ticker_snapshot import TickerSnapshot
 from typing import Any
 
 import pandas as pd
 import yfinance as yf
+
+from domain.ticker_snapshot import TickerSnapshot
 
 _DEFAULT_YF_DELAY_SECONDS = 1.0
 _DEFAULT_YF_JITTER_MAX_SECONDS = 1.0

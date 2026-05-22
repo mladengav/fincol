@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import date
 from typing import Protocol
 
-from domain.ticker_snapshot import TickerSnapshot
 import pandas as pd
+
+from domain.ticker_snapshot import TickerSnapshot
 
 
 class IYahooFinance(Protocol):
