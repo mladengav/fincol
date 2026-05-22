@@ -20,7 +20,7 @@ class IDividendLoader(Protocol):
 
     def retrieve_ticker_dividends(
         self, symbol: str, *, verbose: bool = False
-    ) -> pd.Series: ... # TODO Decouple from YahooFinance schema
+    ) -> pd.Series: ...  # TODO Decouple from YahooFinance schema
 
     def update_dividend_history(self, symbols: list[str]) -> None: ...
 
