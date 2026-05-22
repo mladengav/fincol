@@ -86,9 +86,7 @@ class AggregationUpdater:
 
         print(f"Loaded {len(unique_tickers)} ticker(s) from {self.fincol_io!r}")
         for sym in unique_tickers:
-            print(
-                f"  Last dividend decrease: {sym} = {last_decrease_by_ticker[sym]}"
-            )
+            print(f"  Last dividend decrease: {sym} = {last_decrease_by_ticker[sym]}")
 
         print(f"Wrote last dividend decrease to {self.fincol_io!r}")
         return last_decrease_by_ticker
@@ -138,4 +136,3 @@ class AggregationUpdater:
             )
 
         print(f"Wrote years consecutive dividend increase to {self.fincol_io!r}")
-

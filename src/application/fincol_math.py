@@ -25,7 +25,9 @@ def _get_price_on_or_before(df: pd.DataFrame, d: date) -> pd.Series:
     return df2.iloc[-1] if not df2.empty else df.iloc[-1]
 
 
-def compute_return_periods(symbol: str, divs: pd.Series, history: pd.DataFrame) -> dict[str, dict[str, object]]:
+def compute_return_periods(
+    symbol: str, divs: pd.Series, history: pd.DataFrame
+) -> dict[str, dict[str, object]]:
     """1d, 1m, YTD metrics using ``snapshot.get_history`` and ``snapshot.divs``."""
     if history.empty:
         raise RuntimeError("No price data returned for " + symbol)
@@ -86,7 +88,9 @@ def dividends_by_year_from_history(div_hist: pd.DataFrame) -> pd.DataFrame:
         year=pd.to_datetime(div_hist["date"]).dt.year,
     )
     out = (
-        df.groupby(["symbol", "year"], as_index=False)["amount"]
+        df.groupby(["symbol", "year"], as_index=False)[
+            ["amount"]
+        ]  # double brackets make a DataFrame result explicit to avoid mypy errors
         .sum()
         .rename(columns={"amount": "dividend"})
     )
@@ -114,7 +118,8 @@ def years_consecutive_dividend_increase_for_ticker(
     first_year = dates[0].year
     years_with_divs = sorted({d.year for d in dates})
     year_totals = {
-        y: sum(a for d, a in zip(dates, amounts) if d.year == y) for y in years_with_divs
+        y: sum(a for d, a in zip(dates, amounts) if d.year == y)
+        for y in years_with_divs
     }
 
     count = 0
