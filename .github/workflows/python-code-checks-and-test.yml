@@ -3,10 +3,12 @@
 name: Python code checks and tests
 
 on:
+  # push should never happen, but just in case
   push:
-    branches: [ "main", "pytest" ]
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+    types: [opened, reopened, ready_for_review]
 
 permissions:
   contents: read
