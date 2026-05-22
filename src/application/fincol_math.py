@@ -88,7 +88,7 @@ def dividends_by_year_from_history(div_hist: pd.DataFrame) -> pd.DataFrame:
         year=pd.to_datetime(div_hist["date"]).dt.year,
     )
     out = (
-        df.groupby(["symbol", "year"], as_index=False)["amount"]
+        df.groupby(["symbol", "year"], as_index=False)[["amount"]] # double brackets make a DataFrame result explicit to avoid mypy errors
         .sum()
         .rename(columns={"amount": "dividend"})
     )

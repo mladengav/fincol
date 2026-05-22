@@ -21,7 +21,7 @@ class IYahooFinance(Protocol):
         """Fetch ex-dividend series from the bound ticker."""
         ...
 
-    def load_ticker_history(self, symbol: str) -> pd.DataFrame:
+    def load_ticker_history(self, symbol: str, history_start: date, end: date) -> pd.DataFrame:
         """Fetch event history from the bound ticker."""
         ...
 
