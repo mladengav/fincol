@@ -8,18 +8,20 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
+from constants import FIXTURE_TESTCACHE_DIR
 from domain.ticker_snapshot import TickerSnapshot
 from infrastructure.csv import CsvFincolIo
 
-_TESTCACHE = Path(__file__).resolve().parent / "testcache"
-_TICKERS_FIXTURE = _TESTCACHE / "tickers.csv"
+_TICKERS_FIXTURE = FIXTURE_TESTCACHE_DIR / "tickers.csv"
+
 
 def _default_ticker_snapshot(
     snapshotDate: date,
     symbol: str,
     sectorKey: str,
     industryKey: str,
-    exDividendDate: date) -> TickerSnapshot:
+    exDividendDate: date,
+) -> TickerSnapshot:
 
     return TickerSnapshot(
         snapshotDate=snapshotDate,
@@ -43,11 +45,12 @@ def _default_ticker_snapshot(
         typeDisp="",
     )
 
+
 def test_read_cached_tickers_from_testcache_fixture() -> None:
     """``read_cached_tickers`` maps ``testcache/tickers.csv`` rows onto :class:`~domain.ticker_snapshot.TickerSnapshot` fields."""
     assert _TICKERS_FIXTURE.is_file(), f"missing fixture: {_TICKERS_FIXTURE}"
 
-    fincol_io = CsvFincolIo(_TESTCACHE)
+    fincol_io = CsvFincolIo(FIXTURE_TESTCACHE_DIR)
     snapshots = fincol_io.read_cached_tickers(["RY.TO"])
 
     assert len(snapshots) == 1
@@ -110,7 +113,7 @@ def test_write_tickers_to_cache_creates_minimal_csv(tmp_path: Path) -> None:
         symbol="ZZ.TO",
         sectorKey="sk",
         industryKey="ik",
-        exDividendDate=date(2024, 3, 4)
+        exDividendDate=date(2024, 3, 4),
     )
     io.write_tickers_to_cache([snap])
 
@@ -142,7 +145,7 @@ def test_write_tickers_to_cache_merges_new_symbol_without_dropping_existing(
         symbol="OTHER.TO",
         sectorKey="x",
         industryKey="y",
-        exDividendDate=date(2024, 6, 15)
+        exDividendDate=date(2024, 6, 15),
     )
     io.write_tickers_to_cache([other])
 
@@ -170,7 +173,7 @@ def test_write_tickers_to_cache_update_one_symbol_leaves_others(tmp_path: Path) 
                 symbol="OTHER.TO",
                 sectorKey="keep-me",
                 industryKey="y",
-                exDividendDate=date(2024, 6, 15)
+                exDividendDate=date(2024, 6, 15),
             )
         ]
     )
@@ -181,7 +184,7 @@ def test_write_tickers_to_cache_update_one_symbol_leaves_others(tmp_path: Path) 
                 symbol="RY.TO",
                 sectorKey="updated",
                 industryKey="updated-ik",
-                exDividendDate=date(2025, 2, 2)
+                exDividendDate=date(2025, 2, 2),
             )
         ]
     )

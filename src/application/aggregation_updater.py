@@ -9,6 +9,8 @@ from typing import Protocol, runtime_checkable
 from application import fincol_math as fm
 from domain.fincol_io import IFincolIo
 
+# TODO use logging instead of print
+
 
 @runtime_checkable
 class IAggregationUpdater(Protocol):
