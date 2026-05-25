@@ -9,6 +9,7 @@ Wiring: :mod:`infrastructure.yfinance_client` (live data) → :mod:`application.
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 
 from application.aggregation_updater import AggregationUpdater, IAggregationUpdater
@@ -17,6 +18,10 @@ from domain.fincol_io import IFincolIo, ISymbolLoader
 from infrastructure.csv import AzBlobCsvFincolIo, CsvFincolIo, CsvSymbolLoader
 from infrastructure.json_symbol_loader import JsonSymbolLoader
 from infrastructure.yfinance_client import YahooFinance
+
+logging.basicConfig(
+    format="%(asctime)s %(levelname)s: %(message)s", level=logging.INFO
+)  # TODO use logging.conf to set format, timestamps, etc
 
 # ---------------------------------------------------------------------------
 # User input: CLI
