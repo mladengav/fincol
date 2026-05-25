@@ -7,11 +7,11 @@ and verify that the expected dividend data structures are populated correctly.
 from __future__ import annotations
 
 import math
-from test.constants import FIXTURE_DIVIDEND_HISTORY_CSV
 
 import pandas as pd
 import pytest
 
+from constants import FIXTURE_DIVIDEND_HISTORY_CSV
 from infrastructure.yfinance_client import YahooFinance
 
 # CSV amounts are stored to 4 decimal places, so anything closer than that is noise.

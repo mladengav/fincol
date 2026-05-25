@@ -7,8 +7,8 @@ import shutil
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
-from test.constants import FIXTURE_TESTCACHE_DIR
 
+from constants import FIXTURE_TESTCACHE_DIR
 from domain.ticker_snapshot import TickerSnapshot
 from infrastructure.csv import CsvFincolIo
 

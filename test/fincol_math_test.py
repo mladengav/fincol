@@ -1,14 +1,14 @@
 import math
 from datetime import date
-from test.constants import (
-    FIXTURE_BCE_TO_TICKER,
-    FIXTURE_BNS_TO_TICKER,
-    FIXTURE_DIVIDEND_HISTORY_CSV,
-)
 
 import pandas as pd
 
 from application import fincol_math as fm
+from constants import (
+    FIXTURE_BCE_TO_TICKER,
+    FIXTURE_BNS_TO_TICKER,
+    FIXTURE_DIVIDEND_HISTORY_CSV,
+)
 
 
 def test_fincol_math_dividends_by_year_from_history_bns_2025() -> None:

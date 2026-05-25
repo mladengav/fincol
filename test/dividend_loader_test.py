@@ -11,13 +11,13 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from test.constants import FIXTURE_BNS_TO_TICKER, FIXTURE_DIVIDEND_HISTORY_CSV
 
 import pandas as pd
 import pytest
 
 from application.dividend_loader import DividendLoader
 from application.iyahoo_finance import IYahooFinance
+from constants import FIXTURE_BNS_TO_TICKER, FIXTURE_DIVIDEND_HISTORY_CSV
 from domain.ticker_snapshot import TickerSnapshot
 from infrastructure.csv import CsvFincolIo
 
