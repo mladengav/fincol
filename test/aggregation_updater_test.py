@@ -5,19 +5,19 @@ from __future__ import annotations
 import math
 from datetime import date
 from pathlib import Path
-from test.constants import (
-    FIXTURE_BCE_TO_TICKER,
-    FIXTURE_BNS_TO_TICKER,
-    FIXTURE_DIVIDEND_HISTORY_CSV,
-    FIXTURE_TESTCACHE_DIR,
-)
-from test.dividend_loader_test import CsvBackedYahooFinance
 
 import pandas as pd
 import pytest
 
 from application.aggregation_updater import AggregationUpdater
 from application.dividend_loader import DividendLoader
+from constants import (
+    FIXTURE_BCE_TO_TICKER,
+    FIXTURE_BNS_TO_TICKER,
+    FIXTURE_DIVIDEND_HISTORY_CSV,
+    FIXTURE_TESTCACHE_DIR,
+)
+from dividend_loader_test import CsvBackedYahooFinance
 from infrastructure.csv import CsvFincolIo
 
 AGGREGATIONS_FOLDER = FIXTURE_TESTCACHE_DIR / "aggregations"  # type: ignore[assignment]

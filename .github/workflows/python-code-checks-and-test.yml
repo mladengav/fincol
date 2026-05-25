@@ -49,4 +49,4 @@ jobs:
         mypy
     - name: Test with pytest
       run: |
-        pytest --trace-config
+        pytest
