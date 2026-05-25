@@ -7,16 +7,12 @@ and verify that the expected dividend data structures are populated correctly.
 from __future__ import annotations
 
 import math
-from pathlib import Path
+from test.constants import FIXTURE_DIVIDEND_HISTORY_CSV
 
 import pandas as pd
 import pytest
 
 from infrastructure.yfinance_client import YahooFinance
-
-DIVIDEND_HISTORY_CSV = (
-    Path(__file__).resolve().parent / "testcache" / "dividend_history.csv"
-)
 
 # CSV amounts are stored to 4 decimal places, so anything closer than that is noise.
 # A small relative tolerance covers historical splits/rounding drift in the live feed.
@@ -35,11 +31,11 @@ def yahoo_finance() -> YahooFinance:
 @pytest.fixture(scope="module")
 def expected_dividends_td_to() -> pd.DataFrame:
     """Return the ``(date, amount)`` rows for TD.TO from the cached CSV fixture."""
-    df = pd.read_csv(DIVIDEND_HISTORY_CSV)
+    df = pd.read_csv(FIXTURE_DIVIDEND_HISTORY_CSV)
     rows = df.loc[df["ticker"] == TD_TO_TICKER, ["date", "amount"]].copy()
     assert (
         not rows.empty
-    ), f"Test fixture is empty for {TD_TO_TICKER}: no rows in {DIVIDEND_HISTORY_CSV}"
+    ), f"Test fixture is empty for {TD_TO_TICKER}: no rows in {FIXTURE_DIVIDEND_HISTORY_CSV}"
     rows["date"] = rows["date"].astype(str)
     rows["amount"] = rows["amount"].astype(float)
     return rows.sort_values("date").reset_index(drop=True)
@@ -84,5 +80,5 @@ def test_snapshot_td_to_dividends_contain_all_cached_entries(
         )
         pytest.fail(
             f"{len(missing)} dividend(s) for {TD_TO_TICKER} from "
-            f"{DIVIDEND_HISTORY_CSV.name} are missing from snapshot_td_to.divs:\n{details}"
+            f"{FIXTURE_DIVIDEND_HISTORY_CSV.name} are missing from snapshot_td_to.divs:\n{details}"
         )
