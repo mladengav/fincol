@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import date, datetime
 from typing import Protocol, runtime_checkable
@@ -11,7 +12,8 @@ import pandas as pd
 from application.debug_utils import debug_print_divs_structure
 from application.iyahoo_finance import IYahooFinance
 from domain.fincol_io import IFincolIo
-from domain.ticker_snapshot import TickerSnapshot
+
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -37,11 +39,11 @@ class DividendLoader:
     ) -> pd.Series:
         """``load_ticker_dividends``; print raw ex-dividend series."""
         # snapshot = self.yahoo_finance.load_ticker_info(symbol)
-        print(f"Dividends (ex-dates) for {symbol}")
+        logger.info(f"Dividends (ex-dates) for {symbol}")
         divs = self.yahoo_finance.load_ticker_dividends(symbol)
         if verbose:
             debug_print_divs_structure(divs)
-        print(divs.to_string() if not divs.empty else "(no dividends in series)")
+        logger.info(divs.to_string() if not divs.empty else "(no dividends in series)")
 
         return divs
 
@@ -55,15 +57,15 @@ class DividendLoader:
         if not unique:
             return
 
-        print(f"Updating dividend history for symbols: {unique}")
+        logger.info(f"Updating dividend history for symbols: {unique}")
 
         known_tickers = self.fincol_io.read_cached_tickers(unique)
-        print(f"Known symbols: {[t.symbol for t in known_tickers]}")
+        logger.info(f"Known symbols: {[t.symbol for t in known_tickers]}")
 
         known_symbols = {t.symbol for t in known_tickers}
 
         unknown_symbols = [t for t in unique if t not in known_symbols]
-        print(f"Unknown symbols: {unknown_symbols}")
+        logger.info(f"Unknown symbols: {unknown_symbols}")
 
         known_symbols_to_update = []
         by_last_dividend_date: defaultdict[date, list[str]] = defaultdict(list)
@@ -71,10 +73,10 @@ class DividendLoader:
             by_last_dividend_date[kt.lastDividendDate].append(kt.symbol)
         for last_dividend_date in sorted(by_last_dividend_date):
             symbols = sorted(by_last_dividend_date[last_dividend_date])
-            print(f"Last dividend date {last_dividend_date}: {symbols}")
+            logger.info(f"Last dividend date {last_dividend_date}: {symbols}")
 
             if last_dividend_date >= datetime.now().date():
-                print(
+                logger.info(
                     f"Last dividend date {last_dividend_date} must be at least 1 day in the past, skipping"
                 )
                 continue
@@ -84,12 +86,12 @@ class DividendLoader:
             )
             known_symbols_to_update.extend(symbols_to_update)
 
-        print(f"Known tickers to update: {known_symbols_to_update}")
+        logger.info(f"Known tickers to update: {known_symbols_to_update}")
         symbols_to_update = list(set(known_symbols_to_update + unknown_symbols))
-        print(f"Symbols to update: {symbols_to_update}")
+        logger.info(f"Symbols to update: {symbols_to_update}")
 
         if not symbols_to_update:
-            print("No symbols to update")
+            logger.info("No symbols to update")
             return
 
         updated_snapshots = []
@@ -117,7 +119,7 @@ class DividendLoader:
             if len(symbols_to_update) == 1
             else f"{len(symbols_to_update)} ticker(s)"
         )
-        print(
+        logger.info(
             f"{x_retrieved} rows retrieved ({ticker_note}), "
             f"{rows_added} rows added, {z_filtered} duplicate rows filtered out"
         )
@@ -127,8 +129,8 @@ class DividendLoader:
     ) -> list[str]:
         sums_after = self.yahoo_finance.dividend_sum_after_ex_date(tickers, ex_date)
         tickers_to_update = [s for s in tickers if sums_after.get(s, 0.0) > 0.0]
-        print(f"  Dividend sums after {ex_date}: {sums_after}")
-        print(f"  Tickers with sum > 0: {tickers_to_update}")
+        logger.info(f"  Dividend sums after {ex_date}: {sums_after}")
+        logger.info(f"  Tickers with sum > 0: {tickers_to_update}")
         return tickers_to_update
 
     def _dividends_to_history_frame(self, symbol: str, divs: pd.Series) -> pd.DataFrame:
