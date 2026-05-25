@@ -11,6 +11,7 @@ from domain.fincol_io import IFincolIo
 
 # TODO use logging instead of print
 
+
 @runtime_checkable
 class IAggregationUpdater(Protocol):
     """Updates derived aggregations via :class:`IFincolIo`."""
