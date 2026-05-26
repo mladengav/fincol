@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 
-import pandas as pd
-
 
 @dataclass
 class TickerSnapshot:

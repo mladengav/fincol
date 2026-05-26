@@ -1,13 +1,17 @@
 import re
-from archunitpython import project_files, metrics, assert_passes, project_slices
+
+from archunitpython import assert_passes, metrics, project_files, project_slices
+
 
 def test_no_circular_dependencies():
     rule = project_files("src/").in_folder("src/**").should().have_no_cycles()
     assert_passes(rule)
 
+
 def test_no_large_files():
     rule = metrics("src/").count().lines_of_code().should_be_below(1000)
     assert_passes(rule)
+
 
 def test_adhere_to_diagram():
     diagram = """
@@ -26,7 +30,11 @@ def test_adhere_to_diagram():
 
     rule = (
         project_slices("src/")
-        .defined_by_regex(re.compile(r"/src/(domain|application|infrastructure|presentation_cli)(?:/|$)"))
+        .defined_by_regex(
+            re.compile(
+                r"/src/(domain|application|infrastructure|presentation_cli)(?:/|$)"
+            )
+        )
         .should()
         .adhere_to_diagram(diagram)
     )

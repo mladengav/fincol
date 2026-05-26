@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any, cast, get_type_hints
 
 import pandas as pd
-import yfinance as yf
 
 from domain.fincol_io import IFincolIo
 from domain.ticker_snapshot import TickerSnapshot

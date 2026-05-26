@@ -17,7 +17,7 @@ import pytest
 
 from application.dividend_loader import DividendLoader
 from application.iyahoo_finance import IYahooFinance
-from constants import FIXTURE_BNS_TO_TICKER, FIXTURE_DIVIDEND_HISTORY_CSV
+from constants import BNS_TO, TESTCACHE_DIVIDEND_HISTORY_CSV
 from domain.ticker_snapshot import TickerSnapshot
 from infrastructure.csv import CsvFincolIo
 
@@ -78,7 +78,7 @@ class CsvBackedYahooFinance(IYahooFinance):
         return self._template_divs.copy()
 
     def load_ticker_history(
-        self, symbol: str, start_date: date, end_date: date
+        self, symbol: str, history_start: date, end: date
     ) -> pd.DataFrame:
         return NotImplemented
 
@@ -90,19 +90,17 @@ class CsvBackedYahooFinance(IYahooFinance):
         ts = pd.Timestamp(datetime.combine(window_start, datetime.min.time()), tz="UTC")
         tail = self._template_divs[self._template_divs.index >= ts]
         div_sum = float(tail.fillna(0).sum())
-        return {
-            sym: div_sum if sym == FIXTURE_BNS_TO_TICKER else 0.0 for sym in symbols
-        }
+        return {sym: div_sum if sym == BNS_TO else 0.0 for sym in symbols}
 
 
 @pytest.fixture(scope="module")
 def expected_dividends_bns_to() -> pd.DataFrame:
     """Return the ``(date, amount)`` rows for BNS.TO from the cached CSV fixture."""
-    df = pd.read_csv(FIXTURE_DIVIDEND_HISTORY_CSV)
-    rows = df.loc[df["ticker"] == FIXTURE_BNS_TO_TICKER, ["date", "amount"]].copy()
+    df = pd.read_csv(TESTCACHE_DIVIDEND_HISTORY_CSV)
+    rows = df.loc[df["ticker"] == BNS_TO, ["date", "amount"]].copy()
     assert (
         not rows.empty
-    ), f"Test fixture is empty for {FIXTURE_BNS_TO_TICKER}: no rows in {FIXTURE_DIVIDEND_HISTORY_CSV}"
+    ), f"Test fixture is empty for {BNS_TO}: no rows in {TESTCACHE_DIVIDEND_HISTORY_CSV}"
     rows["date"] = rows["date"].astype(str)
     rows["amount"] = rows["amount"].astype(float)
     return rows.sort_values("date").reset_index(drop=True)
@@ -114,7 +112,7 @@ def generated_cache_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     tmp_folder = tmp_path_factory.mktemp("dividend_loader_bns_cache")
     fincol_io = CsvFincolIo(tmp_folder)
     dividend_loader = DividendLoader(CsvBackedYahooFinance(), fincol_io)
-    dividend_loader.update_dividend_history([FIXTURE_BNS_TO_TICKER])
+    dividend_loader.update_dividend_history([BNS_TO])
     return tmp_folder
 
 
@@ -129,9 +127,7 @@ def test_update_dividend_history_bns_to_output_matches_expected(
     ), f"Expected {out_path} to exist after dividend history update"
 
     written = pd.read_csv(out_path)
-    bns = written.loc[
-        written["ticker"] == FIXTURE_BNS_TO_TICKER, ["date", "amount"]
-    ].copy()
+    bns = written.loc[written["ticker"] == BNS_TO, ["date", "amount"]].copy()
     bns["date"] = bns["date"].astype(str)
     bns["amount"] = bns["amount"].astype(float)
     actual = bns.sort_values("date").reset_index(drop=True)
@@ -139,5 +135,5 @@ def test_update_dividend_history_bns_to_output_matches_expected(
     pd.testing.assert_frame_equal(
         actual,
         expected,
-        obj=f"{out_path.name} {FIXTURE_BNS_TO_TICKER} vs {FIXTURE_DIVIDEND_HISTORY_CSV.name} fixture",
+        obj=f"{out_path.name} {BNS_TO} vs {TESTCACHE_DIVIDEND_HISTORY_CSV.name} fixture",
     )
