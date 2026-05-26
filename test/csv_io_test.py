@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import math
 import shutil
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
-from constants import FIXTURE_TESTCACHE_DIR
+import pytest
+
+from constants import TESTCACHE_DIR
 from domain.ticker_snapshot import TickerSnapshot
 from infrastructure.csv import CsvFincolIo
 
-_TICKERS_FIXTURE = FIXTURE_TESTCACHE_DIR / "tickers.csv"
+_TICKERS_FIXTURE = TESTCACHE_DIR / "tickers.csv"
 
 
 def _default_ticker_snapshot(
@@ -50,7 +51,7 @@ def test_read_cached_tickers_from_testcache_fixture() -> None:
     """``read_cached_tickers`` maps ``testcache/tickers.csv`` rows onto :class:`~domain.ticker_snapshot.TickerSnapshot` fields."""
     assert _TICKERS_FIXTURE.is_file(), f"missing fixture: {_TICKERS_FIXTURE}"
 
-    fincol_io = CsvFincolIo(FIXTURE_TESTCACHE_DIR)
+    fincol_io = CsvFincolIo(TESTCACHE_DIR)
     snapshots = fincol_io.read_cached_tickers(["RY.TO"])
 
     assert len(snapshots) == 1
@@ -70,8 +71,8 @@ def test_read_cached_tickers_from_testcache_fixture() -> None:
     assert snap.dividendYield == 2.6
     assert snap.marketCap == 351370215424
     assert snap.payoutRatio == 0.42580003
-    assert math.isclose(snap.heldPercentInsiders, 0.00027, rel_tol=1e-6)
-    assert math.isclose(snap.heldPercentInstitutions, 0.49071997, rel_tol=1e-6)
+    assert snap.heldPercentInsiders == pytest.approx(0.00027)
+    assert snap.heldPercentInstitutions == pytest.approx(0.49071997)
     assert snap.quoteType == "EQUITY"
     assert snap.typeDisp == "Equity"
 
