@@ -212,3 +212,6 @@ local*
 # Local settings
 ./vscode/settings.json
 /CLAUDE.md
+
+# Aggregation lock files (CsvFincolIo.begin_aggregation_updates)
+*.csv.lock

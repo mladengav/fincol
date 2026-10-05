@@ -20,31 +20,18 @@ _BLOB_NAME = "input_symbols.csv"
 
 
 @pytest.fixture
-def blob_service_client() -> Iterator[BlobServiceClient]:
-    """Start Azurite, seed ``csvinputs/input_symbols.csv``, and yield a client to it."""
+def blob_service_client(
+    azurite_blob_service_client: BlobServiceClient,
+) -> Iterator[BlobServiceClient]:
+    """Seed ``csvinputs/input_symbols.csv`` in Azurite and yield a client to it."""
+    container_client = azurite_blob_service_client.create_container(_CONTAINER_NAME)
     try:
-        from testcontainers.azurite import AzuriteContainer
-    except ImportError:  # pragma: no cover - dev extra not installed
-        pytest.skip("testcontainers[azurite] is not installed")
-
-    try:
-        container = AzuriteContainer()
-        container.start()
-    except Exception as exc:  # pragma: no cover - Docker unavailable / image pull
-        pytest.skip(f"Azurite testcontainer unavailable: {exc}")
-
-    try:
-        # Pin api_version: the SDK default outruns what the Azurite image supports.
-        client = BlobServiceClient.from_connection_string(
-            container.get_connection_string(), api_version="2025-01-05"
-        )
-        container_client = client.create_container(_CONTAINER_NAME)
         container_client.upload_blob(
             _BLOB_NAME, _INPUT_SYMBOLS_CSV.read_bytes(), overwrite=True
         )
-        yield client
+        yield azurite_blob_service_client
     finally:
-        container.stop()
+        container_client.delete_container()
 
 
 def test_loads_symbols_from_azurite_blob(

@@ -26,7 +26,8 @@ dev = [
     "mypy>=1.11",
     "pandas-stubs>=2.2",
     "pytest>=8.0",
-    "testcontainers[azurite]>=4.0",
+    "pytest-mock>=3.16",
+    "testcontainers[azurite]>=4.15",
 ]
 
 [project.scripts]

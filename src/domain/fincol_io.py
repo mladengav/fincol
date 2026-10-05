@@ -30,6 +30,22 @@ class IFincolIo(Protocol):
 
     def write_tickers_to_cache(self, snapshots: list[TickerSnapshot]) -> None: ...
 
+    def begin_aggregation_updates(self) -> None:
+        """Mark the start of a batch of aggregation writes.
+
+        Implementations may prepare for the writes here (for example by taking
+        exclusive locks). If this raises, the implementation must not be left holding anything.
+        """
+        ...
+
+    def finish_aggregation_updates(self) -> None:
+        """Mark the end of a batch of aggregation writes, releasing what ``begin`` set up.
+
+        Must be idempotent (safe without a matching or after a failed ``begin``) and
+        should not raise for cleanup failures, so it never masks the batch's error.
+        """
+        ...
+
     def read_ttm_income(self) -> dict[str, float]: ...
 
     def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None: ...

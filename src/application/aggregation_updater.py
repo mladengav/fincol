@@ -31,11 +31,15 @@ class AggregationUpdater:
         ``symbols`` is not yet used to limit work; callers must pass the tickers
         that were updated so partial recomputation can be added later.
         """
-        self._update_ttm_dividend()
-        self._update_dividends_by_year()
-        last_decrease_by_ticker = self._update_last_dividend_decrease()
-        self._update_years_since_dividend_decrease(last_decrease_by_ticker)
-        self._update_years_consecutive_dividend_increase()
+        self.fincol_io.begin_aggregation_updates()
+        try:
+            self._update_ttm_dividend()
+            self._update_dividends_by_year()
+            last_decrease_by_ticker = self._update_last_dividend_decrease()
+            self._update_years_since_dividend_decrease(last_decrease_by_ticker)
+            self._update_years_consecutive_dividend_increase()
+        finally:
+            self.fincol_io.finish_aggregation_updates()
 
     def _update_ttm_dividend(self) -> None:
         """Write TTM income via ``fincol_io``."""

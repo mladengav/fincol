@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
+from typing import Any
+from unittest.mock import ANY, call
 
 import pandas as pd
 import pytest
+from pytest_mock import MockerFixture
 
 from application.aggregation_updater import AggregationUpdater
 from application.dividend_loader import DividendLoader
@@ -18,10 +22,52 @@ from constants import (
 )
 from dividend_loader_test import CsvBackedYahooFinance
 from infrastructure.csv import CsvFincolIo
+from infrastructure.errors import AggregationLockError
 
 AGGREGATIONS_FOLDER = TESTCACHE_DIR / "aggregations"  # type: ignore[assignment]
 
 TTM_INCOME_FIXTURE_CSV = AGGREGATIONS_FOLDER / "ttm_income.csv"
+
+_AGGREGATION_CSV_NAMES = [
+    "ttm_income.csv",
+    "last_dividend_decrease.csv",
+    "years_since_dividend_decrease.csv",
+    "dividends_by_year.csv",
+    "years_consecutive_dividend_increase.csv",
+]
+
+
+def _lock_paths(cache: Path) -> list[Path]:
+    return [cache / "aggregations" / f"{name}.lock" for name in _AGGREGATION_CSV_NAMES]
+
+
+# Aggregation writes in the order AggregationUpdater.update_aggregations makes them.
+_AGGREGATION_WRITES = [
+    "write_ttm_income",
+    "write_dividends_by_year",
+    "write_last_dividend_decrease",
+    "write_years_since_dividend_decrease",
+    "write_years_consecutive_dividend_increase",
+]
+
+
+def _assert_locked_then(
+    cache: Path, name: str, call_through: Callable[..., Any]
+) -> Callable[..., Any]:
+    """Spy ``side_effect``: assert every aggregation lock is held, then run ``call_through``."""
+
+    def side_effect(*args: Any, **kwargs: Any) -> Any:
+        for lock_path in _lock_paths(cache):
+            assert lock_path.is_file(), f"{name} called without lock {lock_path}"
+        return call_through(*args, **kwargs)
+
+    return side_effect
+
+
+def _write_bce_dividend_history(fincol_io: CsvFincolIo) -> None:
+    div_hist = pd.read_csv(TESTCACHE_DIVIDEND_HISTORY_CSV)
+    bce = div_hist.loc[div_hist["ticker"] == BCE_TO, ["ticker", "date", "amount"]]
+    fincol_io.write_dividend_history(bce)
 
 
 # TODO Generalize for any ticker in TESTCACHE_DIR, use CsvFincolIo directly instead of DividendLoader to write
@@ -200,3 +246,70 @@ def test_bce_years_consecutive_dividend_increase_matches_expected(
 
     expected_years = 0
     assert result[BCE_TO] == expected_years
+
+
+def test_update_aggregations_holds_locks_for_all_writes(
+    tmp_path: Path, mocker: MockerFixture
+) -> None:
+    """``begin`` runs first, every write happens under the lock, ``finish`` runs last."""
+    fincol_io = CsvFincolIo(tmp_path)
+    _write_bce_dividend_history(fincol_io)
+
+    tracker = mocker.Mock()
+    for name in ("begin_aggregation_updates", "finish_aggregation_updates"):
+        tracker.attach_mock(mocker.spy(fincol_io, name), name)
+    for name in _AGGREGATION_WRITES:
+        spy = mocker.spy(fincol_io, name)
+        # Keep the spy's own side_effect (it calls the real method) and assert first.
+        spy.side_effect = _assert_locked_then(tmp_path, name, spy.side_effect)
+        tracker.attach_mock(spy, name)
+
+    AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
+
+    assert tracker.mock_calls == [
+        call.begin_aggregation_updates(),
+        *(getattr(call, name)(ANY) for name in _AGGREGATION_WRITES),
+        call.finish_aggregation_updates(),
+    ]
+    for lock_path in _lock_paths(tmp_path):
+        assert not lock_path.exists(), f"lock {lock_path} not released"
+
+
+def test_update_aggregations_releases_locks_on_error(
+    tmp_path: Path, mocker: MockerFixture
+) -> None:
+    """An exception mid-batch propagates and the locks are still released."""
+    fincol_io = CsvFincolIo(tmp_path)
+    _write_bce_dividend_history(fincol_io)
+    mocker.patch.object(
+        fincol_io, "write_dividends_by_year", side_effect=RuntimeError("boom")
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
+
+    for lock_path in _lock_paths(tmp_path):
+        assert not lock_path.exists(), f"lock {lock_path} not released after error"
+
+    other = CsvFincolIo(tmp_path)
+    other.begin_aggregation_updates()
+    other.finish_aggregation_updates()
+
+
+def test_update_aggregations_refused_while_another_writer_holds_locks(
+    tmp_path: Path,
+) -> None:
+    """A locked cache makes ``update_aggregations`` fail without touching the holder's locks."""
+    holder = CsvFincolIo(tmp_path)
+    _write_bce_dividend_history(holder)
+    holder.begin_aggregation_updates()
+
+    with pytest.raises(AggregationLockError):
+        AggregationUpdater(CsvFincolIo(tmp_path)).update_aggregations([BCE_TO])
+
+    for lock_path in _lock_paths(tmp_path):
+        assert lock_path.is_file(), f"holder's lock {lock_path} was removed"
+    for name in _AGGREGATION_CSV_NAMES:
+        assert not (tmp_path / "aggregations" / name).exists(), f"{name} was written"
+
+    holder.finish_aggregation_updates()

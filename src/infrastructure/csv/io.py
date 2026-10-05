@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import csv
+import logging
+import os
 from collections.abc import Mapping
 from dataclasses import fields
 from datetime import UTC, date, datetime
@@ -15,6 +17,9 @@ import pandas as pd
 from domain.fincol_io import IFincolIo
 from domain.ticker_snapshot import TickerSnapshot
 from infrastructure import _PROJECT_ROOT
+from infrastructure.errors import AggregationLockError
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_date_cell(raw: str) -> date:
@@ -131,12 +136,75 @@ class CsvFincolIo(IFincolIo):
         Path(_AGGREGATIONS_SUBDIR) / "years_consecutive_dividend_increase.csv"
     )
     _DIVIDEND_HISTORY_CSV = "dividend_history.csv"
+    _AGGREGATION_CSVS: tuple[Path, ...] = (
+        _TTM_INCOME_CSV,
+        _LAST_DIVIDEND_DECREASE_CSV,
+        _YEARS_SINCE_DIVIDEND_DECREASE_CSV,
+        _DIVIDENDS_BY_YEAR_CSV,
+        _YEARS_CONSECUTIVE_DIVIDEND_INCREASE_CSV,
+    )
+    _LOCK_SUFFIX = ".lock"
 
     def __init__(self, folder: Path | None = None) -> None:
         self._folder = folder if folder is not None else self._DEFAULT_FOLDER
+        self._held_aggregation_locks: list[Path] = []
 
     def __repr__(self) -> str:
         return f"CsvFincolIo({self._folder!s})"
+
+    def _aggregation_lock_path(self, csv_path: Path) -> Path:
+        return self._folder / csv_path.with_name(csv_path.name + self._LOCK_SUFFIX)
+
+    def begin_aggregation_updates(self) -> None:
+        """Lock every aggregation CSV by creating a sidecar ``<name>.csv.lock`` file.
+
+        Raises :class:`AggregationLockError` if any lock is already held; locks
+        acquired before the failure are released first.
+        """
+        if self._held_aggregation_locks:
+            raise AggregationLockError(
+                f"{self!r}: aggregation updates already in progress"
+            )
+        (self._folder / self._AGGREGATIONS_SUBDIR).mkdir(parents=True, exist_ok=True)
+        try:
+            for csv_path in self._AGGREGATION_CSVS:
+                lock_path = self._aggregation_lock_path(csv_path)
+                try:
+                    fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                except FileExistsError as e:
+                    raise AggregationLockError(
+                        f"{lock_path} is held by another writer (delete it if stale)"
+                    ) from e
+                try:
+                    os.write(
+                        fd, f"{os.getpid()} {datetime.now(UTC).isoformat()}\n".encode()
+                    )
+                finally:
+                    os.close(fd)
+                self._held_aggregation_locks.append(lock_path)
+        except BaseException:
+            self._release_aggregation_locks()
+            raise
+
+    def finish_aggregation_updates(self) -> None:
+        """Release the aggregation locks held by this instance (no-op if none)."""
+        self._release_aggregation_locks()
+
+    def _release_aggregation_locks(self) -> None:
+        for lock_path in reversed(self._held_aggregation_locks):
+            try:
+                lock_path.unlink(missing_ok=True)
+            except OSError:
+                logger.warning(
+                    "Could not remove lock file %s", lock_path, exc_info=True
+                )
+        self._held_aggregation_locks.clear()
+
+    def _require_aggregation_lock(self) -> None:
+        if not self._held_aggregation_locks:
+            raise AggregationLockError(
+                f"{self!r}: call begin_aggregation_updates() before writing aggregations"
+            )
 
     def read_cached_tickers(self, ticker_symbols: list[str]) -> list[TickerSnapshot]:
         path = self._folder / self._TICKERS_CSV
@@ -283,6 +351,7 @@ class CsvFincolIo(IFincolIo):
         return result
 
     def write_ttm_income(self, ttm_by_ticker: Mapping[str, float]) -> None:
+        self._require_aggregation_lock()
         path = self._folder / self._TTM_INCOME_CSV
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -321,6 +390,7 @@ class CsvFincolIo(IFincolIo):
     def write_last_dividend_decrease(
         self, last_decrease_by_ticker: Mapping[str, date]
     ) -> None:
+        self._require_aggregation_lock()
         path = self._folder / self._LAST_DIVIDEND_DECREASE_CSV
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -367,6 +437,7 @@ class CsvFincolIo(IFincolIo):
     def write_years_since_dividend_decrease(
         self, years_since_by_ticker: Mapping[str, int]
     ) -> None:
+        self._require_aggregation_lock()
         path = self._folder / self._YEARS_SINCE_DIVIDEND_DECREASE_CSV
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -412,6 +483,7 @@ class CsvFincolIo(IFincolIo):
     def write_years_consecutive_dividend_increase(
         self, years_consecutive_by_ticker: Mapping[str, int]
     ) -> None:
+        self._require_aggregation_lock()
         path = self._folder / self._YEARS_CONSECUTIVE_DIVIDEND_INCREASE_CSV
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -462,6 +534,7 @@ class CsvFincolIo(IFincolIo):
         return pd.DataFrame(rows)
 
     def write_dividends_by_year(self, dividends_by_year: pd.DataFrame) -> None:
+        self._require_aggregation_lock()
         path = self._folder / self._DIVIDENDS_BY_YEAR_CSV
 
         path.parent.mkdir(parents=True, exist_ok=True)
