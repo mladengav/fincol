@@ -71,6 +71,10 @@ class CsvBackedYahooFinance(IYahooFinance):
             heldPercentInstitutions=0.0,
             quoteType="",
             typeDisp="",
+            lastDividendDecrease=date.min,
+            yearsSinceDividendDecrease=-1,
+            yearsConsecutiveDividendIncrease=-1,
+            ttmDivs=Decimal(0.0),
         )
         return snap
 

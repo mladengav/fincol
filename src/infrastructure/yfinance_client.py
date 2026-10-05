@@ -82,6 +82,10 @@ class YahooFinance:
             heldPercentInstitutions=float(info.get("heldPercentInstitutions") or 0.0),
             quoteType=str(info.get("quoteType") or ""),
             typeDisp=str(info.get("typeDisp") or ""),
+            lastDividendDecrease=date.min,
+            yearsSinceDividendDecrease=-1,
+            yearsConsecutiveDividendIncrease=-1,
+            ttmDivs=Decimal(0.0),
         )
 
         return snap

@@ -11,6 +11,8 @@ from decimal import Decimal
 class TickerSnapshot:
     """Bundle of symbol, data from Yahoo."""
 
+    __ef_schema_version__ = "20261002162314_Initial"
+
     snapshotDate: date
     symbol: str
     sectorKey: str
@@ -34,3 +36,10 @@ class TickerSnapshot:
     heldPercentInstitutions: float
     quoteType: str
     typeDisp: str
+
+    # Aggregations:  TODO separate Yahoo-populated columns into a separate object
+
+    lastDividendDecrease: date
+    yearsSinceDividendDecrease: int
+    yearsConsecutiveDividendIncrease: int
+    ttmDivs: Decimal
