@@ -28,6 +28,7 @@ from infrastructure.csv import (
     CsvSymbolLoader,
 )
 from infrastructure.json_symbol_loader import JsonSymbolLoader
+from infrastructure.mssql import MsSqlFincolIo
 from infrastructure.yfinance_client import YahooFinance
 
 logging.basicConfig(
@@ -63,11 +64,20 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="In raw_div mode, print snapshot.divs structure debug lines.",
     )
-    parser.add_argument(
+    store_group = parser.add_mutually_exclusive_group()
+    store_group.add_argument(
         "--azureCsvStore",
         action="store_true",
         dest="azure_csv_store",
         help="Use Azure Blob Storage container 'csvcache' as the backing store for cache CSV files.",
+    )
+    store_group.add_argument(
+        "--msSqlStore",
+        action="store_true",
+        dest="mssql_store",
+        help="Use SQL Server (MSSQL_CONN_STR) for ticker snapshots and aggregations; "
+        "dividend history stays in the local CSV cache. "
+        "Mutually exclusive with --azureCsvStore.",
     )
     input_group = parser.add_mutually_exclusive_group()
     input_group.add_argument(
@@ -111,6 +121,24 @@ def _build_blob_service_client() -> BlobServiceClient:
     return BlobServiceClient(account_url=storage_url, credential=credential)
 
 
+def _mssql_conn_str() -> str:
+    """Return the SQLAlchemy URL in ``MSSQL_CONN_STR`` (from ``.env`` / environment)."""
+    load_dotenv(_PROJECT_ROOT / ".env")
+    try:
+        return os.environ["MSSQL_CONN_STR"]
+    except KeyError:
+        raise SystemExit("MSSQL_CONN_STR is not set (see .env.sample)") from None
+
+
+def _build_fincol_io(args: argparse.Namespace) -> IFincolIo:
+    """Choose the cache backend selected on the command line."""
+    if args.mssql_store:
+        return MsSqlFincolIo(_mssql_conn_str())
+    if args.azure_csv_store:
+        return AzBlobCsvFincolIo(_build_blob_service_client())
+    return CsvFincolIo()
+
+
 def _run_command(
     args: argparse.Namespace,
     symbols: list[str],
@@ -132,11 +160,7 @@ def _run_command(
 def main() -> int:
     args = build_parser().parse_args()
     input_arg = args.json_file if args.json_file is not None else args.csv_file
-    fincol_io: IFincolIo = (
-        AzBlobCsvFincolIo(_build_blob_service_client())
-        if args.azure_csv_store
-        else CsvFincolIo()
-    )
+    fincol_io = _build_fincol_io(args)
     aggregation_updater: IAggregationUpdater = AggregationUpdater(fincol_io)
     dividend_loader: IDividendLoader = DividendLoader(YahooFinance(), fincol_io)
     if args.azure_csv_input:

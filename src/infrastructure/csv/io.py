@@ -62,6 +62,17 @@ def _parse_datetime_cell(raw: str) -> datetime:
 
 _EMPTY_DECIMAL = Decimal("0.00")
 _TICKER_SNAPSHOT_CSV_ATTRS = frozenset(f.name for f in fields(TickerSnapshot))
+_TICKER_SNAPSHOT_FIELD_BY_LOWER = {
+    name.lower(): name for name in _TICKER_SNAPSHOT_CSV_ATTRS
+}
+
+
+def _normalize_tickers_csv_header(header: list[str]) -> list[str]:
+    """Map ``tickers.csv`` headers onto :class:`TickerSnapshot` field names, ignoring case.
+
+    Older caches use camelCase headers (``snapshotDate``); unknown columns are kept.
+    """
+    return [_TICKER_SNAPSHOT_FIELD_BY_LOWER.get(col.lower(), col) for col in header]
 
 
 def _parse_decimal_cell(raw: str) -> Decimal:
@@ -186,6 +197,57 @@ class CsvFincolIo(IFincolIo):
             self._release_aggregation_locks()
             raise
 
+    def commit_aggregation_updates(
+        self, snapshots: list[TickerSnapshot], dividends_by_year: pd.DataFrame
+    ) -> None:
+        """Merge the batch into the aggregation CSVs, one ``write_*`` per artifact.
+
+        Each per-ticker file is read, overlaid with the snapshots' values and
+        rewritten, so tickers outside the batch keep their last values.
+        """
+        self._require_aggregation_lock()
+        ttm = self.read_ttm_income()
+        ttm.update({s.Symbol: float(s.TtmDivs) for s in snapshots})
+        self.write_ttm_income(ttm)
+
+        last_decrease = self.read_last_dividend_decrease()
+        last_decrease.update({s.Symbol: s.LastDividendDecrease for s in snapshots})
+        self.write_last_dividend_decrease(last_decrease)
+
+        years_since = self.read_years_since_dividend_decrease()
+        years_since.update({s.Symbol: s.YearsSinceDividendDecrease for s in snapshots})
+        self.write_years_since_dividend_decrease(years_since)
+
+        years_consecutive = self.read_years_consecutive_dividend_increase()
+        years_consecutive.update(
+            {s.Symbol: s.YearsConsecutiveDividendIncrease for s in snapshots}
+        )
+        self.write_years_consecutive_dividend_increase(years_consecutive)
+
+        self.merge_dividends_by_year(dividends_by_year, {s.Symbol for s in snapshots})
+
+    def merge_dividends_by_year(
+        self, dividends_by_year: pd.DataFrame, symbols: set[str]
+    ) -> None:
+        """Replace the ``dividends_by_year.csv`` rows of ``symbols`` with ``dividends_by_year``.
+
+        Rows of other symbols are kept; a symbol in ``symbols`` with no new rows is
+        removed.
+        """
+        existing = self.read_dividends_by_year()
+        kept = existing[
+            ~existing["symbol"].isin(symbols | set(dividends_by_year["symbol"]))
+        ]
+        parts = [df for df in (kept, dividends_by_year) if not df.empty]
+        merged = (
+            pd.concat(parts, ignore_index=True)
+            if parts
+            else pd.DataFrame(columns=["symbol", "year", "dividend"])
+        )
+        if not merged.empty:
+            merged = merged.sort_values(["symbol", "year"], kind="mergesort")
+        self.write_dividends_by_year(merged.reset_index(drop=True))
+
     def finish_aggregation_updates(self) -> None:
         """Release the aggregation locks held by this instance (no-op if none)."""
         self._release_aggregation_locks()
@@ -217,10 +279,14 @@ class CsvFincolIo(IFincolIo):
 
         with path.open("r", encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
-            if reader.fieldnames is None or "symbol" not in reader.fieldnames:
-                raise ValueError(f"{path}: CSV must have a 'symbol' column")
+            if reader.fieldnames is not None:
+                reader.fieldnames = _normalize_tickers_csv_header(
+                    list(reader.fieldnames)
+                )
+            if reader.fieldnames is None or "Symbol" not in reader.fieldnames:
+                raise ValueError(f"{path}: CSV must have a 'Symbol' column")
             for row in reader:
-                sym = row.get("symbol")
+                sym = row.get("Symbol")
                 if sym is None or sym == "" or sym not in wanted:
                     continue
                 kwargs: dict[str, Any] = {}
@@ -249,9 +315,11 @@ class CsvFincolIo(IFincolIo):
     def write_tickers_to_cache(self, snapshots: list[TickerSnapshot]) -> None:
         """Merge ``snapshots`` into ``tickers.csv``.
 
-        Rows whose ``symbol`` matches an incoming snapshot are replaced (last snapshot
+        Rows whose ``Symbol`` matches an incoming snapshot are replaced (last snapshot
         wins for duplicate symbols in ``snapshots``). Other rows are kept in file
-        order. Symbols not yet present are appended after existing rows.
+        order. Symbols not yet present are appended after existing rows. Known
+        columns are written with their :class:`TickerSnapshot` field names, so an
+        older camelCase header is migrated on write.
         """
         if not snapshots:
             return
@@ -262,7 +330,7 @@ class CsvFincolIo(IFincolIo):
         incoming_by_symbol: dict[str, TickerSnapshot] = {}
         incoming_order: list[str] = []
         for snap in snapshots:
-            sym = snap.symbol
+            sym = snap.Symbol
             if sym not in incoming_by_symbol:
                 incoming_order.append(sym)
             incoming_by_symbol[sym] = snap
@@ -271,18 +339,19 @@ class CsvFincolIo(IFincolIo):
             with path.open("r", encoding="utf-8", newline="") as f:
                 reader = csv.DictReader(f)
                 fieldnames = (
-                    list(reader.fieldnames)
+                    _normalize_tickers_csv_header(list(reader.fieldnames))
                     if reader.fieldnames
                     else _default_tickers_csv_fieldnames()
                 )
-                if "symbol" not in fieldnames:
-                    raise ValueError(f"{path}: CSV must have a 'symbol' column")
+                reader.fieldnames = fieldnames
+                if "Symbol" not in fieldnames:
+                    raise ValueError(f"{path}: CSV must have a 'Symbol' column")
                 existing_rows = list(reader)
 
             replaced_emitted: set[str] = set()
             out_rows: list[dict[str, str]] = []
             for row in existing_rows:
-                sym = (row.get("symbol") or "").strip()
+                sym = (row.get("Symbol") or "").strip()
                 if sym in incoming_by_symbol:
                     if sym not in replaced_emitted:
                         out_rows.append(

@@ -9,37 +9,42 @@ from decimal import Decimal
 
 @dataclass
 class TickerSnapshot:
-    """Bundle of symbol, data from Yahoo."""
+    """Bundle of symbol, data from Yahoo.
+
+    Field names equal the ``stocko.TickerSnapshots`` column names, so the class maps
+    onto that table without renaming; ``__ef_schema_version__`` is the EF migration
+    the fields correspond to.
+    """
 
     __ef_schema_version__ = "20261002162314_Initial"
 
-    snapshotDate: date
-    symbol: str
-    sectorKey: str
-    industryKey: str
-    industry: str
-    sector: str
-    exDividendDate: date
-    lastDividendDate: date
-    longName: str
-    regularMarketPrice: Decimal
-    regularMarketTime: datetime
+    SnapshotDate: date
+    Symbol: str
+    SectorKey: str
+    IndustryKey: str
+    Industry: str
+    Sector: str
+    ExDividendDate: date
+    LastDividendDate: date
+    LongName: str
+    RegularMarketPrice: Decimal
+    RegularMarketTime: datetime
 
     # TODO remove and use lastDividendValue instead, with yield calculated from price
     # TODO or possibly keep them but treat as announcedDivRate/announcedDivYield
-    dividendRate: Decimal
-    dividendYield: float
+    DividendRate: Decimal
+    DividendYield: float
 
-    marketCap: int
-    payoutRatio: float
-    heldPercentInsiders: float
-    heldPercentInstitutions: float
-    quoteType: str
-    typeDisp: str
+    MarketCap: int
+    PayoutRatio: float
+    HeldPercentInsiders: float
+    HeldPercentInstitutions: float
+    QuoteType: str
+    TypeDisp: str
 
     # Aggregations:  TODO separate Yahoo-populated columns into a separate object
 
-    lastDividendDecrease: date
-    yearsSinceDividendDecrease: int
-    yearsConsecutiveDividendIncrease: int
-    ttmDivs: Decimal
+    LastDividendDecrease: date
+    YearsSinceDividendDecrease: int
+    YearsConsecutiveDividendIncrease: int
+    TtmDivs: Decimal

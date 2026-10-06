@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+from dataclasses import fields
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -29,37 +30,37 @@ def _aggregation_lock_paths(cache: Path) -> list[Path]:
 
 
 def _default_ticker_snapshot(
-    snapshotDate: date,
-    symbol: str,
-    sectorKey: str,
-    industryKey: str,
-    exDividendDate: date,
+    SnapshotDate: date,
+    Symbol: str,
+    SectorKey: str,
+    IndustryKey: str,
+    ExDividendDate: date,
 ) -> TickerSnapshot:
 
     return TickerSnapshot(
-        snapshotDate=snapshotDate,
-        symbol=symbol,
-        sectorKey=sectorKey,
-        industryKey=industryKey,
-        industry="",
-        sector="",
-        exDividendDate=exDividendDate,
-        lastDividendDate=date(1900, 1, 1),
-        longName="",
-        regularMarketPrice=Decimal("0.00"),
-        regularMarketTime=datetime(1900, 1, 1, tzinfo=UTC),
-        dividendRate=Decimal("0.00"),
-        dividendYield=0.0,
-        marketCap=0,
-        payoutRatio=0.0,
-        heldPercentInsiders=0.0,
-        heldPercentInstitutions=0.0,
-        quoteType="",
-        typeDisp="",
-        lastDividendDecrease=date.min,
-        yearsSinceDividendDecrease=-1,
-        yearsConsecutiveDividendIncrease=-1,
-        ttmDivs=Decimal(0.0),
+        SnapshotDate=SnapshotDate,
+        Symbol=Symbol,
+        SectorKey=SectorKey,
+        IndustryKey=IndustryKey,
+        Industry="",
+        Sector="",
+        ExDividendDate=ExDividendDate,
+        LastDividendDate=date(1900, 1, 1),
+        LongName="",
+        RegularMarketPrice=Decimal("0.00"),
+        RegularMarketTime=datetime(1900, 1, 1, tzinfo=UTC),
+        DividendRate=Decimal("0.00"),
+        DividendYield=0.0,
+        MarketCap=0,
+        PayoutRatio=0.0,
+        HeldPercentInsiders=0.0,
+        HeldPercentInstitutions=0.0,
+        QuoteType="",
+        TypeDisp="",
+        LastDividendDecrease=date.min,
+        YearsSinceDividendDecrease=-1,
+        YearsConsecutiveDividendIncrease=-1,
+        TtmDivs=Decimal(0.0),
     )
 
 
@@ -72,25 +73,25 @@ def test_read_cached_tickers_from_testcache_fixture() -> None:
 
     assert len(snapshots) == 1
     snap = snapshots[0]
-    assert snap.symbol == "RY.TO"
-    assert snap.snapshotDate == date(2026, 5, 19)
-    assert snap.sectorKey == "financial-services"
-    assert snap.industryKey == "banks-diversified"
-    assert snap.industry == "Banks - Diversified"
-    assert snap.sector == "Financial Services"
-    assert snap.exDividendDate == date(2026, 4, 23)
-    assert snap.lastDividendDate == date(2026, 4, 23)
-    assert snap.longName == "Royal Bank of Canada"
-    assert snap.regularMarketPrice == Decimal("252.53")
-    assert snap.regularMarketTime == datetime(2026, 5, 19, 20, 00, 00, tzinfo=UTC)
-    assert snap.dividendRate == Decimal("6.56")
-    assert snap.dividendYield == 2.6
-    assert snap.marketCap == 351370215424
-    assert snap.payoutRatio == 0.42580003
-    assert snap.heldPercentInsiders == pytest.approx(0.00027)
-    assert snap.heldPercentInstitutions == pytest.approx(0.49071997)
-    assert snap.quoteType == "EQUITY"
-    assert snap.typeDisp == "Equity"
+    assert snap.Symbol == "RY.TO"
+    assert snap.SnapshotDate == date(2026, 5, 19)
+    assert snap.SectorKey == "financial-services"
+    assert snap.IndustryKey == "banks-diversified"
+    assert snap.Industry == "Banks - Diversified"
+    assert snap.Sector == "Financial Services"
+    assert snap.ExDividendDate == date(2026, 4, 23)
+    assert snap.LastDividendDate == date(2026, 4, 23)
+    assert snap.LongName == "Royal Bank of Canada"
+    assert snap.RegularMarketPrice == Decimal("252.53")
+    assert snap.RegularMarketTime == datetime(2026, 5, 19, 20, 00, 00, tzinfo=UTC)
+    assert snap.DividendRate == Decimal("6.56")
+    assert snap.DividendYield == 2.6
+    assert snap.MarketCap == 351370215424
+    assert snap.PayoutRatio == 0.42580003
+    assert snap.HeldPercentInsiders == pytest.approx(0.00027)
+    assert snap.HeldPercentInstitutions == pytest.approx(0.49071997)
+    assert snap.QuoteType == "EQUITY"
+    assert snap.TypeDisp == "Equity"
 
 
 def test_write_tickers_to_cache_roundtrip_preserves_header_and_mapped_fields(
@@ -111,14 +112,14 @@ def test_write_tickers_to_cache_roundtrip_preserves_header_and_mapped_fields(
     again = fincol_io.read_cached_tickers(["RY.TO"])
     assert len(again) == 1
     s = again[0]
-    assert s.symbol == "RY.TO"
-    assert s.snapshotDate == date(2026, 5, 19)
-    assert s.sectorKey == "financial-services"
-    assert s.industryKey == "banks-diversified"
-    assert s.exDividendDate == date(2026, 4, 23)
-    assert s.longName == "Royal Bank of Canada"
-    assert s.regularMarketPrice == Decimal("252.53")
-    assert s.dividendRate == Decimal("6.56")
+    assert s.Symbol == "RY.TO"
+    assert s.SnapshotDate == date(2026, 5, 19)
+    assert s.SectorKey == "financial-services"
+    assert s.IndustryKey == "banks-diversified"
+    assert s.ExDividendDate == date(2026, 4, 23)
+    assert s.LongName == "Royal Bank of Canada"
+    assert s.RegularMarketPrice == Decimal("252.53")
+    assert s.DividendRate == Decimal("6.56")
 
 
 def test_write_tickers_to_cache_creates_minimal_csv(tmp_path: Path) -> None:
@@ -126,22 +127,22 @@ def test_write_tickers_to_cache_creates_minimal_csv(tmp_path: Path) -> None:
     cache = tmp_path / "cache"
     io = CsvFincolIo(cache)
     snap = _default_ticker_snapshot(
-        snapshotDate=date(2024, 1, 2),
-        symbol="ZZ.TO",
-        sectorKey="sk",
-        industryKey="ik",
-        exDividendDate=date(2024, 3, 4),
+        SnapshotDate=date(2024, 1, 2),
+        Symbol="ZZ.TO",
+        SectorKey="sk",
+        IndustryKey="ik",
+        ExDividendDate=date(2024, 3, 4),
     )
     io.write_tickers_to_cache([snap])
 
     out = io.read_cached_tickers(["ZZ.TO"])
     assert len(out) == 1
     r = out[0]
-    assert r.symbol == "ZZ.TO"
-    assert r.snapshotDate == date(2024, 1, 2)
-    assert r.sectorKey == "sk"
-    assert r.industryKey == "ik"
-    assert r.exDividendDate == date(2024, 3, 4)
+    assert r.Symbol == "ZZ.TO"
+    assert r.SnapshotDate == date(2024, 1, 2)
+    assert r.SectorKey == "sk"
+    assert r.IndustryKey == "ik"
+    assert r.ExDividendDate == date(2024, 3, 4)
 
 
 def test_write_tickers_to_cache_merges_new_symbol_without_dropping_existing(
@@ -158,23 +159,23 @@ def test_write_tickers_to_cache_merges_new_symbol_without_dropping_existing(
     io = CsvFincolIo(cache)
     ry = io.read_cached_tickers(["RY.TO"])[0]
     other = _default_ticker_snapshot(
-        snapshotDate=date(2024, 6, 1),
-        symbol="OTHER.TO",
-        sectorKey="x",
-        industryKey="y",
-        exDividendDate=date(2024, 6, 15),
+        SnapshotDate=date(2024, 6, 1),
+        Symbol="OTHER.TO",
+        SectorKey="x",
+        IndustryKey="y",
+        ExDividendDate=date(2024, 6, 15),
     )
     io.write_tickers_to_cache([other])
 
     loaded = io.read_cached_tickers(["RY.TO", "OTHER.TO"])
-    by_sym = {s.symbol: s for s in loaded}
+    by_sym = {s.Symbol: s for s in loaded}
     assert set(by_sym) == {"RY.TO", "OTHER.TO"}
-    assert by_sym["RY.TO"].snapshotDate == ry.snapshotDate
-    assert by_sym["OTHER.TO"].sectorKey == "x"
+    assert by_sym["RY.TO"].SnapshotDate == ry.SnapshotDate
+    assert by_sym["OTHER.TO"].SectorKey == "x"
 
 
 def test_write_tickers_to_cache_update_one_symbol_leaves_others(tmp_path: Path) -> None:
-    """Replacing one symbol's row does not remove other symbols from the cache."""
+    """Replacing one Symbol's row does not remove other symbols from the cache."""
     assert _TICKERS_FIXTURE.is_file(), f"missing fixture: {_TICKERS_FIXTURE}"
 
     cache = tmp_path / "cache"
@@ -186,31 +187,31 @@ def test_write_tickers_to_cache_update_one_symbol_leaves_others(tmp_path: Path) 
     io.write_tickers_to_cache(
         [
             _default_ticker_snapshot(
-                snapshotDate=date(2024, 6, 1),
-                symbol="OTHER.TO",
-                sectorKey="keep-me",
-                industryKey="y",
-                exDividendDate=date(2024, 6, 15),
+                SnapshotDate=date(2024, 6, 1),
+                Symbol="OTHER.TO",
+                SectorKey="keep-me",
+                IndustryKey="y",
+                ExDividendDate=date(2024, 6, 15),
             )
         ]
     )
     io.write_tickers_to_cache(
         [
             _default_ticker_snapshot(
-                snapshotDate=date(2025, 1, 1),
-                symbol="RY.TO",
-                sectorKey="updated",
-                industryKey="updated-ik",
-                exDividendDate=date(2025, 2, 2),
+                SnapshotDate=date(2025, 1, 1),
+                Symbol="RY.TO",
+                SectorKey="updated",
+                IndustryKey="updated-ik",
+                ExDividendDate=date(2025, 2, 2),
             )
         ]
     )
 
     loaded = io.read_cached_tickers(["RY.TO", "OTHER.TO"])
-    by_sym = {s.symbol: s for s in loaded}
-    assert by_sym["OTHER.TO"].sectorKey == "keep-me"
-    assert by_sym["RY.TO"].sectorKey == "updated"
-    assert by_sym["RY.TO"].industryKey == "updated-ik"
+    by_sym = {s.Symbol: s for s in loaded}
+    assert by_sym["OTHER.TO"].SectorKey == "keep-me"
+    assert by_sym["RY.TO"].SectorKey == "updated"
+    assert by_sym["RY.TO"].IndustryKey == "updated-ik"
 
 
 def test_begin_aggregation_updates_creates_lock_files(tmp_path: Path) -> None:
@@ -293,3 +294,29 @@ def test_begin_twice_raises_and_finish_without_begin_is_noop(tmp_path: Path) -> 
     io.finish_aggregation_updates()
     for lock_path in _aggregation_lock_paths(tmp_path):
         assert not lock_path.exists()
+
+
+def test_write_tickers_to_cache_migrates_camel_case_header(tmp_path: Path) -> None:
+    """An old camelCase header is rewritten with field names; unknown columns are kept."""
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    dest = cache / "tickers.csv"
+    header, *rows = _TICKERS_FIXTURE.read_text(encoding="utf-8").splitlines()
+    assert header.startswith("snapshotDate,symbol,"), "fixture should be camelCase"
+    dest.write_text(
+        "\n".join([header + ",legacyNote", *(row + ",keep" for row in rows)]) + "\n",
+        encoding="utf-8",
+    )
+
+    io = CsvFincolIo(cache)
+    original = io.read_cached_tickers(["RY.TO", "BCE.TO"])
+    io.write_tickers_to_cache([original[0]])
+
+    new_header = dest.read_text(encoding="utf-8").splitlines()[0].split(",")
+    assert new_header[:2] == ["SnapshotDate", "Symbol"]
+    assert new_header[-1] == "legacyNote"
+    assert (
+        new_header[:-1]
+        == [f.name for f in fields(TickerSnapshot)][: len(new_header) - 1]
+    )
+    assert io.read_cached_tickers(["RY.TO", "BCE.TO"]) == original

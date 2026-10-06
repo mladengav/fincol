@@ -60,9 +60,9 @@ class DividendLoader:
         logger.info(f"Updating dividend history for symbols: {unique}")
 
         known_tickers = self.fincol_io.read_cached_tickers(unique)
-        logger.info(f"Known symbols: {[t.symbol for t in known_tickers]}")
+        logger.info(f"Known symbols: {[t.Symbol for t in known_tickers]}")
 
-        known_symbols = {t.symbol for t in known_tickers}
+        known_symbols = {t.Symbol for t in known_tickers}
 
         unknown_symbols = [t for t in unique if t not in known_symbols]
         logger.info(f"Unknown symbols: {unknown_symbols}")
@@ -70,7 +70,7 @@ class DividendLoader:
         known_symbols_to_update = []
         by_last_dividend_date: defaultdict[date, list[str]] = defaultdict(list)
         for kt in known_tickers:
-            by_last_dividend_date[kt.lastDividendDate].append(kt.symbol)
+            by_last_dividend_date[kt.LastDividendDate].append(kt.Symbol)
         for last_dividend_date in sorted(by_last_dividend_date):
             symbols = sorted(by_last_dividend_date[last_dividend_date])
             logger.info(f"Last dividend date {last_dividend_date}: {symbols}")

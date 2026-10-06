@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from datetime import date
+from decimal import Decimal
 from typing import Protocol, runtime_checkable
+
+import pandas as pd
 
 from application import fincol_math as fm
 from domain.fincol_io import IFincolIo
+from domain.ticker_snapshot import TickerSnapshot
 
 # TODO use logging instead of print
 
@@ -26,119 +29,92 @@ class AggregationUpdater:
         self.fincol_io = fincol_io
 
     def update_aggregations(self, symbols: list[str]) -> None:
-        """Update aggregations for ``symbols`` via ``fincol_io``.
+        """Recompute aggregations for the cached tickers of ``symbols`` and commit them.
 
-        ``symbols`` is not yet used to limit work; callers must pass the tickers
-        that were updated so partial recomputation can be added later.
+        After ``begin``, the cached snapshot of each symbol is read. Every
+        ``_update_*`` step changes only those in-memory snapshots (or, for
+        dividends by year, returns a frame); nothing is written until a single
+        ``commit_aggregation_updates`` call once all steps have succeeded.
         """
         self.fincol_io.begin_aggregation_updates()
         try:
-            self._update_ttm_dividend()
-            self._update_dividends_by_year()
-            last_decrease_by_ticker = self._update_last_dividend_decrease()
-            self._update_years_since_dividend_decrease(last_decrease_by_ticker)
-            self._update_years_consecutive_dividend_increase()
+            snapshots = self.fincol_io.read_cached_tickers(symbols)
+            missing = sorted(set(symbols) - {s.Symbol for s in snapshots})
+            if missing:
+                print(f"No cached ticker snapshot, skipping aggregations: {missing}")
+            div_hist = self.fincol_io.read_dividend_history()
+
+            self._update_ttm_dividend(snapshots, div_hist)
+            dividends_by_year = self._update_dividends_by_year(snapshots, div_hist)
+            self._update_last_dividend_decrease(snapshots, div_hist)
+            self._update_years_since_dividend_decrease(snapshots)
+            self._update_years_consecutive_dividend_increase(snapshots, div_hist)
+
+            self.fincol_io.commit_aggregation_updates(snapshots, dividends_by_year)
+            print(f"Committed aggregations for {len(snapshots)} ticker(s)")
         finally:
             self.fincol_io.finish_aggregation_updates()
 
-    def _update_ttm_dividend(self) -> None:
-        """Write TTM income via ``fincol_io``."""
-
-        div_hist = self.fincol_io.read_dividend_history()
-        ttm_by_ticker: dict[str, float] = {}
-
-        unique_tickers = list(dict.fromkeys(div_hist["ticker"]))
-
-        for sym in unique_tickers:
-            ttm_by_ticker[sym] = fm.ttm_per_share_for_ticker(sym, div_hist)
-        self.fincol_io.write_ttm_income(ttm_by_ticker)
-
-        print(f"Loaded {len(unique_tickers)} ticker(s) from {self.fincol_io!r}")
-        for sym in unique_tickers:
+    def _update_ttm_dividend(
+        self, snapshots: list[TickerSnapshot], div_hist: pd.DataFrame
+    ) -> None:
+        """Set ``TtmDivs`` on each snapshot."""
+        for snap in snapshots:
+            ttm = fm.ttm_per_share_for_ticker(snap.Symbol, div_hist)
+            snap.TtmDivs = Decimal(f"{ttm:.4f}")
             print(
-                f"  TTM dividend income (last {fm.TTM_NUM_PAYMENTS} payments): {sym} = {ttm_by_ticker[sym]:.4f}"
+                f"  TTM dividend income (last {fm.TTM_NUM_PAYMENTS} payments): "
+                f"{snap.Symbol} = {snap.TtmDivs}"
             )
 
-        print(f"Wrote TTM income to {self.fincol_io!r}")
-
-    def _update_dividends_by_year(self) -> None:
-        """Write per-symbol annual dividend totals via ``fincol_io``."""
-
-        div_hist = self.fincol_io.read_dividend_history()
-        dividends_by_year = fm.dividends_by_year_from_history(div_hist)
-        self.fincol_io.write_dividends_by_year(dividends_by_year)
-
-        symbols = list(dict.fromkeys(dividends_by_year["symbol"]))
-        print(f"Loaded {len(symbols)} symbol(s) from {self.fincol_io!r}")
-        for sym in symbols:
-            sub = dividends_by_year[dividends_by_year["symbol"] == sym]
-            year_count = len(sub)
+    def _update_dividends_by_year(
+        self, snapshots: list[TickerSnapshot], div_hist: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Return per-symbol annual dividend totals for the snapshots' symbols."""
+        batch = {snap.Symbol for snap in snapshots}
+        dividends_by_year = fm.dividends_by_year_from_history(
+            div_hist[div_hist["ticker"].isin(batch)]
+        )
+        for sym in dict.fromkeys(dividends_by_year["symbol"]):
+            year_count = int((dividends_by_year["symbol"] == sym).sum())
             print(f"  Dividends by year: {sym} = {year_count} year(s)")
-        print(f"Wrote dividends by year to {self.fincol_io!r}")
+        return dividends_by_year
 
-    def _update_last_dividend_decrease(self) -> dict[str, date]:
-        """Write last dividend decrease date per ticker via ``fincol_io``."""
-
-        div_hist = self.fincol_io.read_dividend_history()
-        last_decrease_by_ticker: dict[str, date] = {}
-
-        unique_tickers = list(dict.fromkeys(div_hist["ticker"]))
-
-        for sym in unique_tickers:
-            last_decrease_by_ticker[sym] = fm.last_dividend_decrease_date_for_ticker(
-                sym, div_hist
+    def _update_last_dividend_decrease(
+        self, snapshots: list[TickerSnapshot], div_hist: pd.DataFrame
+    ) -> None:
+        """Set ``LastDividendDecrease`` on each snapshot."""
+        for snap in snapshots:
+            snap.LastDividendDecrease = fm.last_dividend_decrease_date_for_ticker(
+                snap.Symbol, div_hist
             )
-        self.fincol_io.write_last_dividend_decrease(last_decrease_by_ticker)
-
-        print(f"Loaded {len(unique_tickers)} ticker(s) from {self.fincol_io!r}")
-        for sym in unique_tickers:
-            print(f"  Last dividend decrease: {sym} = {last_decrease_by_ticker[sym]}")
-
-        print(f"Wrote last dividend decrease to {self.fincol_io!r}")
-        return last_decrease_by_ticker
+            print(
+                f"  Last dividend decrease: {snap.Symbol} = {snap.LastDividendDecrease}"
+            )
 
     def _update_years_since_dividend_decrease(
-        self,
-        last_decrease_by_ticker: Mapping[str, date],
+        self, snapshots: list[TickerSnapshot]
     ) -> None:
-        """Write years since last dividend decrease per ticker via ``fincol_io``."""
-
+        """Set ``YearsSinceDividendDecrease`` from each snapshot's ``LastDividendDecrease``."""
         current_year = date.today().year
-        years_since_by_ticker = {
-            sym: current_year - last_decrease.year
-            for sym, last_decrease in last_decrease_by_ticker.items()
-        }
-        self.fincol_io.write_years_since_dividend_decrease(years_since_by_ticker)
-
-        print(f"Loaded {len(years_since_by_ticker)} ticker(s) from {self.fincol_io!r}")
-        for sym in sorted(years_since_by_ticker):
+        for snap in snapshots:
+            snap.YearsSinceDividendDecrease = (
+                current_year - snap.LastDividendDecrease.year
+            )
             print(
-                f"  Years since dividend decrease: {sym} = {years_since_by_ticker[sym]}"
+                f"  Years since dividend decrease: "
+                f"{snap.Symbol} = {snap.YearsSinceDividendDecrease}"
             )
 
-        print(f"Wrote years since dividend decrease to {self.fincol_io!r}")
-
-    def _update_years_consecutive_dividend_increase(self) -> None:
-        """Write consecutive years of dividend increases per ticker via ``fincol_io``."""
-
-        div_hist = self.fincol_io.read_dividend_history()
-        years_consecutive_by_ticker: dict[str, int] = {}
-
-        unique_tickers = list(dict.fromkeys(div_hist["ticker"]))
-
-        for sym in unique_tickers:
-            years_consecutive_by_ticker[sym] = (
-                fm.years_consecutive_dividend_increase_for_ticker(sym, div_hist)
+    def _update_years_consecutive_dividend_increase(
+        self, snapshots: list[TickerSnapshot], div_hist: pd.DataFrame
+    ) -> None:
+        """Set ``YearsConsecutiveDividendIncrease`` on each snapshot."""
+        for snap in snapshots:
+            snap.YearsConsecutiveDividendIncrease = (
+                fm.years_consecutive_dividend_increase_for_ticker(snap.Symbol, div_hist)
             )
-        self.fincol_io.write_years_consecutive_dividend_increase(
-            years_consecutive_by_ticker
-        )
-
-        print(f"Loaded {len(unique_tickers)} ticker(s) from {self.fincol_io!r}")
-        for sym in sorted(years_consecutive_by_ticker):
             print(
                 "  Years consecutive dividend increase: "
-                f"{sym} = {years_consecutive_by_ticker[sym]}"
+                f"{snap.Symbol} = {snap.YearsConsecutiveDividendIncrease}"
             )
-
-        print(f"Wrote years consecutive dividend increase to {self.fincol_io!r}")

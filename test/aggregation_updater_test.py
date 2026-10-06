@@ -41,13 +41,13 @@ def _lock_paths(cache: Path) -> list[Path]:
     return [cache / "aggregations" / f"{name}.lock" for name in _AGGREGATION_CSV_NAMES]
 
 
-# Aggregation writes in the order AggregationUpdater.update_aggregations makes them.
+# Aggregation writes in the order CsvFincolIo.commit_aggregation_updates makes them.
 _AGGREGATION_WRITES = [
     "write_ttm_income",
-    "write_dividends_by_year",
     "write_last_dividend_decrease",
     "write_years_since_dividend_decrease",
     "write_years_consecutive_dividend_increase",
+    "write_dividends_by_year",
 ]
 
 
@@ -64,10 +64,17 @@ def _assert_locked_then(
     return side_effect
 
 
-def _write_bce_dividend_history(fincol_io: CsvFincolIo) -> None:
+def _seed_bce(fincol_io: CsvFincolIo) -> None:
+    """Write BCE.TO dividend history and its cached ticker snapshot from testcache."""
     div_hist = pd.read_csv(TESTCACHE_DIVIDEND_HISTORY_CSV)
     bce = div_hist.loc[div_hist["ticker"] == BCE_TO, ["ticker", "date", "amount"]]
+    assert (
+        not bce.empty
+    ), f"No dividend rows for {BCE_TO} in {TESTCACHE_DIVIDEND_HISTORY_CSV}"
     fincol_io.write_dividend_history(bce)
+    fincol_io.write_tickers_to_cache(
+        CsvFincolIo(TESTCACHE_DIR).read_cached_tickers([BCE_TO])
+    )
 
 
 # TODO Generalize for any ticker in TESTCACHE_DIR, use CsvFincolIo directly instead of DividendLoader to write
@@ -159,14 +166,8 @@ def test_bns_years_since_decrease_matches_fixture(
 def test_bce_last_dividend_decrease_uses_latest_cut_date(tmp_path: Path) -> None:
     """BCE.TO last cut date from testcache dividend history matches the aggregation fixture."""
 
-    div_hist = pd.read_csv(TESTCACHE_DIVIDEND_HISTORY_CSV)
-    bce = div_hist.loc[div_hist["ticker"] == BCE_TO, ["ticker", "date", "amount"]]
-    assert (
-        not bce.empty
-    ), f"No dividend rows for {BCE_TO} in {TESTCACHE_DIVIDEND_HISTORY_CSV}"
-
     fincol_io = CsvFincolIo(tmp_path)
-    fincol_io.write_dividend_history(bce)
+    _seed_bce(fincol_io)
     AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
 
     result = fincol_io.read_last_dividend_decrease()
@@ -198,14 +199,8 @@ def test_bns_dividends_by_year_2025_matches_expected(
 def test_bce_years_since_dividend_decrease_matches_expected(tmp_path: Path) -> None:
     """BCE.TO years since last cut from testcache dividend history matches the fixture."""
 
-    div_hist = pd.read_csv(TESTCACHE_DIVIDEND_HISTORY_CSV)
-    bce = div_hist.loc[div_hist["ticker"] == BCE_TO, ["ticker", "date", "amount"]]
-    assert (
-        not bce.empty
-    ), f"No dividend rows for {BCE_TO} in {TESTCACHE_DIVIDEND_HISTORY_CSV}"
-
     fincol_io = CsvFincolIo(tmp_path)
-    fincol_io.write_dividend_history(bce)
+    _seed_bce(fincol_io)
     AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
 
     result = fincol_io.read_years_since_dividend_decrease()
@@ -232,14 +227,8 @@ def test_bce_years_consecutive_dividend_increase_matches_expected(
 ) -> None:
     """BCE.TO years consecutive dividend increase from testcache dividend history matches the fixture."""
 
-    div_hist = pd.read_csv(TESTCACHE_DIVIDEND_HISTORY_CSV)
-    bce = div_hist.loc[div_hist["ticker"] == BCE_TO, ["ticker", "date", "amount"]]
-    assert (
-        not bce.empty
-    ), f"No dividend rows for {BCE_TO} in {TESTCACHE_DIVIDEND_HISTORY_CSV}"
-
     fincol_io = CsvFincolIo(tmp_path)
-    fincol_io.write_dividend_history(bce)
+    _seed_bce(fincol_io)
     AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
 
     result = fincol_io.read_years_consecutive_dividend_increase()
@@ -248,15 +237,21 @@ def test_bce_years_consecutive_dividend_increase_matches_expected(
     assert result[BCE_TO] == expected_years
 
 
-def test_update_aggregations_holds_locks_for_all_writes(
+def test_update_aggregations_writes_only_through_commit(
     tmp_path: Path, mocker: MockerFixture
 ) -> None:
-    """``begin`` runs first, every write happens under the lock, ``finish`` runs last."""
+    """Cached tickers are read after ``begin``; every write happens inside ``commit``,
+    under the lock; ``finish`` runs last."""
     fincol_io = CsvFincolIo(tmp_path)
-    _write_bce_dividend_history(fincol_io)
+    _seed_bce(fincol_io)
 
     tracker = mocker.Mock()
-    for name in ("begin_aggregation_updates", "finish_aggregation_updates"):
+    for name in (
+        "begin_aggregation_updates",
+        "read_cached_tickers",
+        "commit_aggregation_updates",
+        "finish_aggregation_updates",
+    ):
         tracker.attach_mock(mocker.spy(fincol_io, name), name)
     for name in _AGGREGATION_WRITES:
         spy = mocker.spy(fincol_io, name)
@@ -268,9 +263,15 @@ def test_update_aggregations_holds_locks_for_all_writes(
 
     assert tracker.mock_calls == [
         call.begin_aggregation_updates(),
+        call.read_cached_tickers([BCE_TO]),
+        call.commit_aggregation_updates(ANY, ANY),
         *(getattr(call, name)(ANY) for name in _AGGREGATION_WRITES),
         call.finish_aggregation_updates(),
     ]
+    (committed, dividends_by_year), _ = tracker.commit_aggregation_updates.call_args
+    assert [s.Symbol for s in committed] == [BCE_TO]
+    assert committed[0].LastDividendDecrease == date(2025, 6, 16)
+    assert set(dividends_by_year["symbol"]) == {BCE_TO}
     for lock_path in _lock_paths(tmp_path):
         assert not lock_path.exists(), f"lock {lock_path} not released"
 
@@ -278,16 +279,21 @@ def test_update_aggregations_holds_locks_for_all_writes(
 def test_update_aggregations_releases_locks_on_error(
     tmp_path: Path, mocker: MockerFixture
 ) -> None:
-    """An exception mid-batch propagates and the locks are still released."""
+    """An exception mid-batch propagates, nothing is committed, and the locks are released."""
     fincol_io = CsvFincolIo(tmp_path)
-    _write_bce_dividend_history(fincol_io)
-    mocker.patch.object(
-        fincol_io, "write_dividends_by_year", side_effect=RuntimeError("boom")
+    _seed_bce(fincol_io)
+    mocker.patch(
+        "application.fincol_math.dividends_by_year_from_history",
+        side_effect=RuntimeError("boom"),
     )
+    commit = mocker.spy(fincol_io, "commit_aggregation_updates")
 
     with pytest.raises(RuntimeError, match="boom"):
         AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
 
+    commit.assert_not_called()
+    for name in _AGGREGATION_CSV_NAMES:
+        assert not (tmp_path / "aggregations" / name).exists(), f"{name} was written"
     for lock_path in _lock_paths(tmp_path):
         assert not lock_path.exists(), f"lock {lock_path} not released after error"
 
@@ -296,12 +302,44 @@ def test_update_aggregations_releases_locks_on_error(
     other.finish_aggregation_updates()
 
 
+def test_update_aggregations_keeps_tickers_outside_the_batch(tmp_path: Path) -> None:
+    """The CSV commit merges: aggregations of tickers not in ``symbols`` are kept."""
+    fincol_io = CsvFincolIo(tmp_path)
+    _seed_bce(fincol_io)
+    fincol_io.begin_aggregation_updates()
+    fincol_io.write_ttm_income({"OTHER.TO": 9.5})
+    fincol_io.write_dividends_by_year(
+        pd.DataFrame([{"symbol": "OTHER.TO", "year": 2024, "dividend": 9.5}])
+    )
+    fincol_io.finish_aggregation_updates()
+
+    AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
+
+    ttm = fincol_io.read_ttm_income()
+    assert ttm["OTHER.TO"] == pytest.approx(9.5)
+    assert BCE_TO in ttm
+    by_year = fincol_io.read_dividends_by_year()
+    assert {"OTHER.TO", BCE_TO} <= set(by_year["symbol"])
+
+
+def test_update_aggregations_skips_symbols_without_cached_ticker(
+    tmp_path: Path,
+) -> None:
+    """Symbols with no cached snapshot get no aggregations; the others still do."""
+    fincol_io = CsvFincolIo(tmp_path)
+    _seed_bce(fincol_io)
+
+    AggregationUpdater(fincol_io).update_aggregations([BCE_TO, "NOPE.TO"])
+
+    assert set(fincol_io.read_ttm_income()) == {BCE_TO}
+
+
 def test_update_aggregations_refused_while_another_writer_holds_locks(
     tmp_path: Path,
 ) -> None:
     """A locked cache makes ``update_aggregations`` fail without touching the holder's locks."""
     holder = CsvFincolIo(tmp_path)
-    _write_bce_dividend_history(holder)
+    _seed_bce(holder)
     holder.begin_aggregation_updates()
 
     with pytest.raises(AggregationLockError):
