@@ -21,15 +21,17 @@ _BLOB_NAME = "input_symbols.csv"
 
 @pytest.fixture
 def blob_service_client(
-    azurite_blob_service_client: BlobServiceClient,
+    testcontainers_blob_service_client: BlobServiceClient,
 ) -> Iterator[BlobServiceClient]:
     """Seed ``csvinputs/input_symbols.csv`` in Azurite and yield a client to it."""
-    container_client = azurite_blob_service_client.create_container(_CONTAINER_NAME)
+    container_client = testcontainers_blob_service_client.create_container(
+        _CONTAINER_NAME
+    )
     try:
         container_client.upload_blob(
             _BLOB_NAME, _INPUT_SYMBOLS_CSV.read_bytes(), overwrite=True
         )
-        yield azurite_blob_service_client
+        yield testcontainers_blob_service_client
     finally:
         container_client.delete_container()
 

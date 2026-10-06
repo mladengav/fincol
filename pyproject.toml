@@ -65,3 +65,6 @@ ignore_missing_imports = true
 testpaths = ["test"]
 python_files = ["*_test.py", "constants.py"]
 pythonpath = ["src"]
+markers = [
+    "docker: needs a Docker testcontainer (auto-applied to tests using a 'testcontainers*' fixture)",
+]

@@ -53,9 +53,9 @@ def _captured_sql(fincol_io: MsSqlFincolIo) -> Iterator[list[str]]:
 
 
 @pytest.fixture(scope="module")
-def db_engine(mssql_url: str) -> Iterator[Engine]:
+def db_engine(testcontainers_mssql_url: str) -> Iterator[Engine]:
     """Raw engine for seeding and inspecting the test database."""
-    engine = create_engine(mssql_url)
+    engine = create_engine(testcontainers_mssql_url)
     yield engine
     engine.dispose()
 
@@ -75,8 +75,8 @@ def _clean_db(db_engine: Engine) -> Iterator[None]:
 
 
 @pytest.fixture
-def mssql_io(mssql_url: str, tmp_path: Path) -> Iterator[MsSqlFincolIo]:
-    fincol_io = MsSqlFincolIo(mssql_url, csv_io=CsvFincolIo(tmp_path))
+def mssql_io(testcontainers_mssql_url: str, tmp_path: Path) -> Iterator[MsSqlFincolIo]:
+    fincol_io = MsSqlFincolIo(testcontainers_mssql_url, csv_io=CsvFincolIo(tmp_path))
     yield fincol_io
     fincol_io.close()
 
@@ -108,7 +108,7 @@ def test_schema_version_matches_initial_migration(mssql_io: MsSqlFincolIo) -> No
 
 
 def test_schema_version_mismatch_is_refused(
-    mssql_url: str, db_engine: Engine, tmp_path: Path
+    testcontainers_mssql_url: str, db_engine: Engine, tmp_path: Path
 ) -> None:
     """A newer EF migration in the database than TickerSnapshot expects is refused."""
     with db_engine.begin() as conn:
@@ -121,7 +121,7 @@ def test_schema_version_mismatch_is_refused(
         )
 
     with pytest.raises(SchemaVersionMismatchError, match="20991231000000_Future"):
-        MsSqlFincolIo(mssql_url, csv_io=CsvFincolIo(tmp_path))
+        MsSqlFincolIo(testcontainers_mssql_url, csv_io=CsvFincolIo(tmp_path))
 
 
 def test_tickers_round_trip(mssql_io: MsSqlFincolIo) -> None:
@@ -251,10 +251,12 @@ def test_aggregation_write_requires_lock(mssql_io: MsSqlFincolIo) -> None:
 
 
 def test_second_instance_cannot_begin_while_applock_held(
-    mssql_io: MsSqlFincolIo, mssql_url: str, tmp_path: Path
+    mssql_io: MsSqlFincolIo, testcontainers_mssql_url: str, tmp_path: Path
 ) -> None:
     """The SQL applock refuses a second writer, even with a separate CSV cache."""
-    other = MsSqlFincolIo(mssql_url, csv_io=CsvFincolIo(tmp_path / "other"))
+    other = MsSqlFincolIo(
+        testcontainers_mssql_url, csv_io=CsvFincolIo(tmp_path / "other")
+    )
     try:
         mssql_io.begin_aggregation_updates()
         with pytest.raises(AggregationLockError, match="sp_getapplock"):

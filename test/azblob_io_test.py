@@ -32,10 +32,12 @@ _AGGREGATION_BLOBS = [
 
 @pytest.fixture
 def csvcache(
-    azurite_blob_service_client: BlobServiceClient,
+    testcontainers_blob_service_client: BlobServiceClient,
 ) -> Iterator[ContainerClient]:
     """Create an empty ``csvcache`` container for one test and delete it afterwards."""
-    container_client = azurite_blob_service_client.create_container(_CONTAINER_NAME)
+    container_client = testcontainers_blob_service_client.create_container(
+        _CONTAINER_NAME
+    )
     try:
         yield container_client
     finally:
@@ -54,12 +56,12 @@ def _local_lock_paths(cache: Path) -> list[Path]:
 
 
 def test_begin_leases_aggregation_blobs(
-    azurite_blob_service_client: BlobServiceClient,
+    testcontainers_blob_service_client: BlobServiceClient,
     csvcache: ContainerClient,
     tmp_path: Path,
 ) -> None:
     """While locked, aggregation blobs are leased and cannot be overwritten without the lease."""
-    fincol_io = AzBlobCsvFincolIo(azurite_blob_service_client, folder=tmp_path)
+    fincol_io = AzBlobCsvFincolIo(testcontainers_blob_service_client, folder=tmp_path)
     fincol_io.begin_aggregation_updates()
 
     assert set(_lease_states(csvcache).values()) == {"leased"}
@@ -76,12 +78,12 @@ def test_begin_leases_aggregation_blobs(
 
 
 def test_writes_under_lease_upload_to_blob(
-    azurite_blob_service_client: BlobServiceClient,
+    testcontainers_blob_service_client: BlobServiceClient,
     csvcache: ContainerClient,
     tmp_path: Path,
 ) -> None:
     """Aggregation writes made while holding the lease reach Azure; lock files never do."""
-    fincol_io = AzBlobCsvFincolIo(azurite_blob_service_client, folder=tmp_path)
+    fincol_io = AzBlobCsvFincolIo(testcontainers_blob_service_client, folder=tmp_path)
     fincol_io.begin_aggregation_updates()
     fincol_io.write_ttm_income({"X.TO": 1.0})
     fincol_io.finish_aggregation_updates()
@@ -92,15 +94,17 @@ def test_writes_under_lease_upload_to_blob(
 
 
 def test_second_instance_cannot_begin_while_leased(
-    azurite_blob_service_client: BlobServiceClient,
+    testcontainers_blob_service_client: BlobServiceClient,
     csvcache: ContainerClient,
     tmp_path: Path,
 ) -> None:
     """A second writer is refused while the first holds the leases, and keeps no locks."""
-    holder = AzBlobCsvFincolIo(azurite_blob_service_client, folder=tmp_path / "a")
+    holder = AzBlobCsvFincolIo(
+        testcontainers_blob_service_client, folder=tmp_path / "a"
+    )
     holder.begin_aggregation_updates()
     other_folder = tmp_path / "b"
-    other = AzBlobCsvFincolIo(azurite_blob_service_client, folder=other_folder)
+    other = AzBlobCsvFincolIo(testcontainers_blob_service_client, folder=other_folder)
 
     with pytest.raises(AggregationLockError):
         other.begin_aggregation_updates()
@@ -113,13 +117,13 @@ def test_second_instance_cannot_begin_while_leased(
 
 
 def test_update_aggregations_releases_leases_on_error(
-    azurite_blob_service_client: BlobServiceClient,
+    testcontainers_blob_service_client: BlobServiceClient,
     csvcache: ContainerClient,
     tmp_path: Path,
     mocker: MockerFixture,
 ) -> None:
     """An exception mid-batch propagates and both leases and local locks are released."""
-    fincol_io = AzBlobCsvFincolIo(azurite_blob_service_client, folder=tmp_path)
+    fincol_io = AzBlobCsvFincolIo(testcontainers_blob_service_client, folder=tmp_path)
     div_hist = pd.read_csv(TESTCACHE_DIVIDEND_HISTORY_CSV)
     fincol_io.write_dividend_history(
         div_hist.loc[div_hist["ticker"] == BCE_TO, ["ticker", "date", "amount"]]
