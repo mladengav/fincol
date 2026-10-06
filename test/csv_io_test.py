@@ -1,4 +1,4 @@
-"""Tests for :mod:`infrastructure.csv.io` cache readers."""
+"""Tests for :mod:`infrastructure.csv.io` (``CsvFincolIo``)."""
 
 from __future__ import annotations
 
@@ -8,25 +8,41 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
+import pandas as pd
 import pytest
+from pytest_mock import MockerFixture
 
-from constants import TESTCACHE_DIR
+from application.aggregation_updater import AggregationUpdater
+from constants import BCE_TO, TESTCACHE_DIR, TESTCACHE_DIVIDEND_HISTORY_CSV
 from domain.ticker_snapshot import TickerSnapshot
 from infrastructure.csv import CsvFincolIo
 from infrastructure.errors import AggregationLockError
 
 _TICKERS_FIXTURE = TESTCACHE_DIR / "tickers.csv"
-_AGGREGATION_LOCK_NAMES = [
-    "ttm_income.csv.lock",
-    "last_dividend_decrease.csv.lock",
-    "years_since_dividend_decrease.csv.lock",
-    "dividends_by_year.csv.lock",
-    "years_consecutive_dividend_increase.csv.lock",
+_AGGREGATION_CSV_NAMES = [
+    "ttm_income.csv",
+    "last_dividend_decrease.csv",
+    "years_since_dividend_decrease.csv",
+    "dividends_by_year.csv",
+    "years_consecutive_dividend_increase.csv",
 ]
 
 
 def _aggregation_lock_paths(cache: Path) -> list[Path]:
-    return [cache / "aggregations" / name for name in _AGGREGATION_LOCK_NAMES]
+    return [cache / "aggregations" / f"{name}.lock" for name in _AGGREGATION_CSV_NAMES]
+
+
+def seed_bce(fincol_io: CsvFincolIo) -> None:
+    """Write BCE.TO dividend history and its cached ticker snapshot from testcache."""
+    div_hist = pd.read_csv(TESTCACHE_DIVIDEND_HISTORY_CSV)
+    bce = div_hist.loc[div_hist["ticker"] == BCE_TO, ["ticker", "date", "amount"]]
+    assert (
+        not bce.empty
+    ), f"No dividend rows for {BCE_TO} in {TESTCACHE_DIVIDEND_HISTORY_CSV}"
+    fincol_io.write_dividend_history(bce)
+    fincol_io.write_tickers_to_cache(
+        CsvFincolIo(TESTCACHE_DIR).read_cached_tickers([BCE_TO])
+    )
 
 
 def _default_ticker_snapshot(
@@ -294,6 +310,90 @@ def test_begin_twice_raises_and_finish_without_begin_is_noop(tmp_path: Path) -> 
     io.finish_aggregation_updates()
     for lock_path in _aggregation_lock_paths(tmp_path):
         assert not lock_path.exists()
+
+
+def test_lock_released_after_successful_update(
+    tmp_path: Path, mocker: MockerFixture
+) -> None:
+    """A real BCE.TO update commits its aggregations and releases every aggregation lock."""
+    fincol_io = CsvFincolIo(tmp_path)
+    seed_bce(fincol_io)
+    commit = mocker.spy(fincol_io, "commit_aggregation_updates")
+
+    AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
+
+    commit.assert_called_once()
+    (committed, dividends_by_year), _ = commit.call_args
+    assert [s.Symbol for s in committed] == [BCE_TO]
+    assert committed[0].LastDividendDecrease == date(2025, 6, 16)
+    assert set(dividends_by_year["symbol"]) == {BCE_TO}
+    for lock_path in _aggregation_lock_paths(tmp_path):
+        assert not lock_path.exists(), f"lock {lock_path} not released"
+
+
+def test_update_aggregations_releases_locks_on_error(
+    tmp_path: Path, mocker: MockerFixture
+) -> None:
+    """An exception mid-batch propagates, nothing is committed, and the locks are released."""
+    fincol_io = CsvFincolIo(tmp_path)
+    seed_bce(fincol_io)
+    mocker.patch(
+        "application.fincol_math.dividends_by_year_from_history",
+        side_effect=RuntimeError("boom"),
+    )
+    commit = mocker.spy(fincol_io, "commit_aggregation_updates")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
+
+    commit.assert_not_called()
+    for name in _AGGREGATION_CSV_NAMES:
+        assert not (tmp_path / "aggregations" / name).exists(), f"{name} was written"
+    for lock_path in _aggregation_lock_paths(tmp_path):
+        assert not lock_path.exists(), f"lock {lock_path} not released after error"
+
+    other = CsvFincolIo(tmp_path)
+    other.begin_aggregation_updates()
+    other.finish_aggregation_updates()
+
+
+def test_update_aggregations_keeps_tickers_outside_the_batch(tmp_path: Path) -> None:
+    """The CSV commit merges: aggregations of tickers not in ``symbols`` are kept."""
+    fincol_io = CsvFincolIo(tmp_path)
+    seed_bce(fincol_io)
+    fincol_io.begin_aggregation_updates()
+    fincol_io.write_ttm_income({"OTHER.TO": 9.5})
+    fincol_io.write_dividends_by_year(
+        pd.DataFrame([{"symbol": "OTHER.TO", "year": 2024, "dividend": 9.5}])
+    )
+    fincol_io.finish_aggregation_updates()
+
+    AggregationUpdater(fincol_io).update_aggregations([BCE_TO])
+
+    ttm = fincol_io.read_ttm_income()
+    assert ttm["OTHER.TO"] == pytest.approx(9.5)
+    assert BCE_TO in ttm
+    by_year = fincol_io.read_dividends_by_year()
+    assert {"OTHER.TO", BCE_TO} <= set(by_year["symbol"])
+
+
+def test_update_aggregations_refused_while_another_writer_holds_locks(
+    tmp_path: Path,
+) -> None:
+    """A locked cache makes ``update_aggregations`` fail without touching the holder's locks."""
+    holder = CsvFincolIo(tmp_path)
+    seed_bce(holder)
+    holder.begin_aggregation_updates()
+
+    with pytest.raises(AggregationLockError):
+        AggregationUpdater(CsvFincolIo(tmp_path)).update_aggregations([BCE_TO])
+
+    for lock_path in _aggregation_lock_paths(tmp_path):
+        assert lock_path.is_file(), f"holder's lock {lock_path} was removed"
+    for name in _AGGREGATION_CSV_NAMES:
+        assert not (tmp_path / "aggregations" / name).exists(), f"{name} was written"
+
+    holder.finish_aggregation_updates()
 
 
 def test_write_tickers_to_cache_migrates_camel_case_header(tmp_path: Path) -> None:
